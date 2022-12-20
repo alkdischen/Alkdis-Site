@@ -1,0 +1,65 @@
+baseURL = "http://43.143.6.224:81/"
+copyright = "© Alkdis Chen"
+languageCode = "en-us"
+theme = "hugo-ink"
+title = "Alkdis Ch"
+# Code Highlight
+pygmentscodefences = true
+pygmentscodefencesguesssyntax = true
+pygmentsstyle = "vs"
+paginate = 10 # articles per page
+
+googleAnalytics = "UA-52525161-8"
+
+[params]
+avatar = "https://picgo-1313480473.cos.ap-shanghai.myqcloud.com/Blog/sculpture.jpg"
+mode = "light"
+featherIconsCDN = true
+subtitle = "Gone with wind"
+excludedTypes = ["page", "pages"]
+
+[[params.social]]
+icon = "github"
+name = "GitHub"
+url = "https://github.com/AlkdisChen"
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+
+[[menu.main]]
+name = "Home"
+url = "/"
+weight = 1
+
+[[menu.main]]
+name = "推文"
+url = "/posts"
+weight = 2
+
+[[menu.main]]
+  name = "Posts"
+  url = "/posts-ng"
+  weight = 3
+
+[[menu.main]]
+name = "About"
+url = "/pages/about"
+weight = 4
+
+[[menu.main]]
+name = "Tags"
+url = "/tags"
+weight = 5
+
+
+
+  
+
+
+
+[languages.en]
+  languageCode = "en-us"
+[languages.zh]
+  languageCode = "zh-cn"
