@@ -1,15 +1,13 @@
-name: Test
-
+name: Auto Deploy Hugo
 on:
-  pull_request:
+  push:
     branches:
-      - master  # Set a branch to deploy
-
+      - main
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  deploy:
+    runs-on: centos-7.6
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: true
           fetch-depth: 0
@@ -20,7 +18,13 @@ jobs:
           hugo-version: 'latest'
 
       - name: Build
-        run: hugo
+        run: hugo --minify
 
-      # - name: Post Build
-      #   run: cp CNAME ./public/
+      - name: Deploy
+        uses: wlixcc/SFTP-Deploy-Action@v1.0
+        with:
+          username: 'root'
+          server: '${{ secrets.SERVER_IP }}'
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          local_path: './public'
+          remote_path: '/home/hugo'
