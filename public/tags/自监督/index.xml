@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>自监督 on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/tags/%E8%87%AA%E7%9B%91%E7%9D%A3/</link>
+    <description>Recent content in 自监督 on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Fri, 04 Aug 2023 15:16:22 +0000</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/%E8%87%AA%E7%9B%91%E7%9D%A3/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>2023 08 03 MIM</title>
+      <link>https://www.alkdischen.cn/posts/articles/2023-08-03-paper-mim/</link>
+      <pubDate>Fri, 04 Aug 2023 15:16:22 +0000</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2023-08-03-paper-mim/</guid>
+      <description>前言 写好博客，记录一下读过的好论文。
+Background 论文名称: Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture arxiv: 2301.08243 Keywords: CV, Self-Supervised Learning **Author: **Yann Lecun Abstract 一句话总结：在 skyzh/uring-positioned-io 中，我包装了 Tokio 提供的底层 io_uring 接口，在 Rust 中实现了基于 io_uring 的异步随机读文件。你可以这么用它：
+ctx.read(fid, offset, &amp;amp;mut buf).await?; 本文介绍了 io_uring 的基本使用方法，然后介绍了本人写的异步读文件库的实现方法，最后做了一个 benchmark，和 mmap 对比性能。
+点击这里可以访问 GitHub 项目。
+io_uring 简介 io_uring 是一个由 Linux 内核的提供的异步 I/O 接口。它于 2019 年 5 月在 Linux 5.1 中面世，现在已经在各种项目中被使用。 比如：
+RocksDB 的 MultiRead 目前就是通过 io_uring 做并发读文件。 Tokio 为 io_uring 包装了一层 API。在 Tokio 1.</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>[DataSet] ImageNet-1k处理 - Alkdis Chen</title><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta itemprop="name" content="[DataSet] ImageNet-1k处理">
+<meta itemprop="description" content="前言 由于每次在云服务器上处理数据都需要进行数据集下载与处理，因此写一篇post来记录ImageNet的处理过程。
+ImageNet的重要性不遑多言，官方下载网站为：https://image-net.org/download.php，需要提前注册号账号，且下载速度较慢，建议使用云盘下载。
+这里列出百度云下载链接：
+https://pan.baidu.com/s/1Nhd7YB-xBXPYj7y9cNOedQ 提取码：ufxe 数据集类别 目前主流数据集又ImageNet-1k和ImageNet-22k，数字代表类别数目不同。
+ImageNet有不同年份的数据集，一般使用ILSVRC2012版本，为2012年的ILSVR大赛数据集。
+观察下载数据，可以发现分为三大类：
+bbox devkit img 如果只是用于日常训练，只需要考虑img数据集，本文也只会探讨img数据集的处理。
+观察img数据，发现分为四个文件，分别为：
+train train_t3 val test 它们分别是训练集，验证集与测试集。特别的，train_t3为新增的训练任务，具体内容可以去官网查看，一般不用考虑使用。
+因此，我们最终需要使用的文件名称为
+ILSVRC2012_img_train.tar ILSVRC2012_img_val.tar ILSVRC2012_img_test.tar 下载到服务器即可，建议存放到单独的文件夹，本文以文件夹 /ImageNet1k/ILSVRC2012/作为根目录为例。
+数据集处理 tar文件的解压很简单，使用指令
+tar -xvf 文件名 即可解压到当前目录，因此建议分别解压到/ImageNet1k/ILSVRC2012/train，/ImageNet1k/ILSVRC2012/val和/ImageNet1k/ILSVRC2012/test目录即可，将文件mv到相应目录，然后解压即可。
+值得一提的是，val和test文件全都是图片，只需要正常解压就行，但是train不是，内部是1000个压缩包，每个压缩包代表一个类别的图片压缩集合，需要特别处理。
+训练集处理 进入到训练集的目录/ImageNet1k/ILSVRC2012/train，确定好压缩包数目为1000个，随后进行批量解压缩，指令为
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34; .tar) mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34; tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34; done 随后会将所有的压缩包解压到单独的以自身文件名称命名的文件夹之中。
+如果空间不充足，可以边解压边删除，增加一句rm &quot;$file&quot;即可：
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34; .tar) mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34; tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34; rm &#34;$file&#34; done 至此ImageNet1k数据集的处理结束。"><meta itemprop="datePublished" content="2023-08-06T11:45:42+00:00" />
+<meta itemprop="dateModified" content="2023-08-06T11:45:42+00:00" />
+<meta itemprop="wordCount" content="108">
+<meta itemprop="keywords" content="DataSet," /><meta property="og:title" content="[DataSet] ImageNet-1k处理" />
+<meta property="og:description" content="前言 由于每次在云服务器上处理数据都需要进行数据集下载与处理，因此写一篇post来记录ImageNet的处理过程。
+ImageNet的重要性不遑多言，官方下载网站为：https://image-net.org/download.php，需要提前注册号账号，且下载速度较慢，建议使用云盘下载。
+这里列出百度云下载链接：
+https://pan.baidu.com/s/1Nhd7YB-xBXPYj7y9cNOedQ 提取码：ufxe 数据集类别 目前主流数据集又ImageNet-1k和ImageNet-22k，数字代表类别数目不同。
+ImageNet有不同年份的数据集，一般使用ILSVRC2012版本，为2012年的ILSVR大赛数据集。
+观察下载数据，可以发现分为三大类：
+bbox devkit img 如果只是用于日常训练，只需要考虑img数据集，本文也只会探讨img数据集的处理。
+观察img数据，发现分为四个文件，分别为：
+train train_t3 val test 它们分别是训练集，验证集与测试集。特别的，train_t3为新增的训练任务，具体内容可以去官网查看，一般不用考虑使用。
+因此，我们最终需要使用的文件名称为
+ILSVRC2012_img_train.tar ILSVRC2012_img_val.tar ILSVRC2012_img_test.tar 下载到服务器即可，建议存放到单独的文件夹，本文以文件夹 /ImageNet1k/ILSVRC2012/作为根目录为例。
+数据集处理 tar文件的解压很简单，使用指令
+tar -xvf 文件名 即可解压到当前目录，因此建议分别解压到/ImageNet1k/ILSVRC2012/train，/ImageNet1k/ILSVRC2012/val和/ImageNet1k/ILSVRC2012/test目录即可，将文件mv到相应目录，然后解压即可。
+值得一提的是，val和test文件全都是图片，只需要正常解压就行，但是train不是，内部是1000个压缩包，每个压缩包代表一个类别的图片压缩集合，需要特别处理。
+训练集处理 进入到训练集的目录/ImageNet1k/ILSVRC2012/train，确定好压缩包数目为1000个，随后进行批量解压缩，指令为
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34; .tar) mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34; tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34; done 随后会将所有的压缩包解压到单独的以自身文件名称命名的文件夹之中。
+如果空间不充足，可以边解压边删除，增加一句rm &quot;$file&quot;即可：
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34; .tar) mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34; tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34; rm &#34;$file&#34; done 至此ImageNet1k数据集的处理结束。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2023-08-06T11:45:42+00:00" />
+<meta property="article:modified_time" content="2023-08-06T11:45:42+00:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="[DataSet] ImageNet-1k处理"/>
+<meta name="twitter:description" content="前言 由于每次在云服务器上处理数据都需要进行数据集下载与处理，因此写一篇post来记录ImageNet的处理过程。
+ImageNet的重要性不遑多言，官方下载网站为：https://image-net.org/download.php，需要提前注册号账号，且下载速度较慢，建议使用云盘下载。
+这里列出百度云下载链接：
+https://pan.baidu.com/s/1Nhd7YB-xBXPYj7y9cNOedQ 提取码：ufxe 数据集类别 目前主流数据集又ImageNet-1k和ImageNet-22k，数字代表类别数目不同。
+ImageNet有不同年份的数据集，一般使用ILSVRC2012版本，为2012年的ILSVR大赛数据集。
+观察下载数据，可以发现分为三大类：
+bbox devkit img 如果只是用于日常训练，只需要考虑img数据集，本文也只会探讨img数据集的处理。
+观察img数据，发现分为四个文件，分别为：
+train train_t3 val test 它们分别是训练集，验证集与测试集。特别的，train_t3为新增的训练任务，具体内容可以去官网查看，一般不用考虑使用。
+因此，我们最终需要使用的文件名称为
+ILSVRC2012_img_train.tar ILSVRC2012_img_val.tar ILSVRC2012_img_test.tar 下载到服务器即可，建议存放到单独的文件夹，本文以文件夹 /ImageNet1k/ILSVRC2012/作为根目录为例。
+数据集处理 tar文件的解压很简单，使用指令
+tar -xvf 文件名 即可解压到当前目录，因此建议分别解压到/ImageNet1k/ILSVRC2012/train，/ImageNet1k/ILSVRC2012/val和/ImageNet1k/ILSVRC2012/test目录即可，将文件mv到相应目录，然后解压即可。
+值得一提的是，val和test文件全都是图片，只需要正常解压就行，但是train不是，内部是1000个压缩包，每个压缩包代表一个类别的图片压缩集合，需要特别处理。
+训练集处理 进入到训练集的目录/ImageNet1k/ILSVRC2012/train，确定好压缩包数目为1000个，随后进行批量解压缩，指令为
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34; .tar) mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34; tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34; done 随后会将所有的压缩包解压到单独的以自身文件名称命名的文件夹之中。
+如果空间不充足，可以边解压边删除，增加一句rm &quot;$file&quot;即可：
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34; .tar) mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34; tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34; rm &#34;$file&#34; done 至此ImageNet1k数据集的处理结束。"/>
+<link href='https://fonts.googleapis.com/css?family=Playfair+Display:700' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/main.css" />
+
+        <link id="dark-scheme" rel="stylesheet" type="text/css" href="https://www.alkdischen.cn/css/dark.css" />
+
+	<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+		<script src="https://www.alkdischen.cn/js/main.js"></script>
+	
+</head>
+
+
+
+<body>
+	<div class="container wrapper">
+		<div class="header">
+	
+		<div class="avatar">
+			<a href="https://www.alkdischen.cn/">
+				<img src="https://picgo-1313480473.cos.ap-shanghai.myqcloud.com/Blog/sculpture.jpg" alt="Alkdis Chen" />
+			</a>
+		</div>
+	
+	<h1 class="site-title"><a href="https://www.alkdischen.cn/">Alkdis Chen</a></h1>
+	<div class="site-description"><p>Coding with wind</p><nav class="nav social">
+			<ul class="flat"><li><a href="https://github.com/ikoltech" title="GitHub"><i data-feather="github"></i></a></li></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+			<li>
+				<a href="/">Home</a>
+			</li>
+			
+			<li>
+				<a href="/posts">推文</a>
+			</li>
+			
+			<li>
+				<a href="/posts-ng">Posts</a>
+			</li>
+			
+			<li>
+				<a href="/pages/about">About</a>
+			</li>
+			
+			<li>
+				<a href="/tags">Tags</a>
+			</li>
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post">
+			<div class="post-header">
+				
+					
+						<div class="meta">
+							<div class="date">
+								<span class="day">06</span>
+								<span class="rest">Aug 2023</span>
+							</div>
+						</div>
+					
+				
+				<div class="matter">
+					<h1 class="title">[DataSet] ImageNet-1k处理</h1>
+					
+				</div>
+			</div>
+					
+			<div>
+				
+					<nav id="TableOfContents">
+  <ul>
+    <li><a href="#前言">前言</a></li>
+    <li><a href="#数据集类别">数据集类别</a></li>
+    <li><a href="#数据集处理">数据集处理</a></li>
+    <li><a href="#训练集处理">训练集处理</a></li>
+    <li><a href="#检验">检验</a></li>
+  </ul>
+</nav>
+					<hr>
+				
+			</div>
+			<div class="markdown">
+				<h2 id="前言">前言</h2>
+<p>由于每次在云服务器上处理数据都需要进行数据集下载与处理，因此写一篇post来记录ImageNet的处理过程。</p>
+<p>ImageNet的重要性不遑多言，官方下载网站为：https://image-net.org/download.php，需要提前注册号账号，且下载速度较慢，建议使用云盘下载。</p>
+<p>这里列出百度云下载链接：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>https://pan.baidu.com/s/1Nhd7YB-xBXPYj7y9cNOedQ
+</span></span><span style="display:flex;"><span>提取码：ufxe
+</span></span></code></pre></div><h2 id="数据集类别">数据集类别</h2>
+<p>目前主流数据集又ImageNet-1k和ImageNet-22k，数字代表类别数目不同。</p>
+<p>ImageNet有不同年份的数据集，一般使用ILSVRC2012版本，为2012年的ILSVR大赛数据集。</p>
+<p>观察下载数据，可以发现分为三大类：</p>
+<ol>
+<li>bbox</li>
+<li>devkit</li>
+<li>img</li>
+</ol>
+<p>如果只是用于日常训练，只需要考虑img数据集，本文也只会探讨img数据集的处理。</p>
+<p>观察img数据，发现分为四个文件，分别为：</p>
+<ol>
+<li>train</li>
+<li><del>train_t3</del></li>
+<li>val</li>
+<li>test</li>
+</ol>
+<p>它们分别是训练集，验证集与测试集。特别的，train_t3为新增的训练任务，具体内容可以去官网查看，一般不用考虑使用。</p>
+<p>因此，我们最终需要使用的文件名称为</p>
+<ol>
+<li>ILSVRC2012_img_train.tar</li>
+<li>ILSVRC2012_img_val.tar</li>
+<li>ILSVRC2012_img_test.tar</li>
+</ol>
+<p>下载到服务器即可，建议存放到单独的文件夹，本文以文件夹 <code>/ImageNet1k/ILSVRC2012/</code>作为根目录为例。</p>
+<h2 id="数据集处理">数据集处理</h2>
+<p>tar文件的解压很简单，使用指令</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>tar -xvf 文件名
+</span></span></code></pre></div><p>即可解压到当前目录，因此建议分别解压到<code>/ImageNet1k/ILSVRC2012/train</code>，<code>/ImageNet1k/ILSVRC2012/val</code>和<code>/ImageNet1k/ILSVRC2012/test</code>目录即可，将文件mv到相应目录，然后解压即可。</p>
+<p>值得一提的是，val和test文件全都是图片，只需要正常解压就行，但是train不是，内部是1000个压缩包，每个压缩包代表一个类别的图片压缩集合，需要特别处理。</p>
+<h2 id="训练集处理">训练集处理</h2>
+<p>进入到训练集的目录<code>/ImageNet1k/ILSVRC2012/train</code>，确定好压缩包数目为1000个，随后进行批量解压缩，指令为</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>for file in /ImageNet1k/ILSVRC2012/train*.tar; do
+</span></span><span style="display:flex;"><span>  dir=$(basename &#34;$file&#34; .tar)
+</span></span><span style="display:flex;"><span>  mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34;
+</span></span><span style="display:flex;"><span>  tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34;
+</span></span><span style="display:flex;"><span>done
+</span></span></code></pre></div><p>随后会将所有的压缩包解压到单独的以自身文件名称命名的文件夹之中。</p>
+<p>如果空间不充足，可以边解压边删除，增加一句<code>rm &quot;$file&quot;</code>即可：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>for file in /ImageNet1k/ILSVRC2012/train*.tar; do  
+</span></span><span style="display:flex;"><span>  dir=$(basename &#34;$file&#34; .tar)
+</span></span><span style="display:flex;"><span>  mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34;
+</span></span><span style="display:flex;"><span>  tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34;
+</span></span><span style="display:flex;"><span>  rm &#34;$file&#34;
+</span></span><span style="display:flex;"><span>done
+</span></span></code></pre></div><p>至此ImageNet1k数据集的处理结束。</p>
+<h2 id="检验">检验</h2>
+<p>检验数据解压数据量是非常重要的步骤，在此罗列常用的检验操作。</p>
+<p>检验当前目录下文件夹数目：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>ls -l | grep &#39;^d&#39; | wc -l
+</span></span></code></pre></div><p>检验当前目录下压缩文件数目：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>ls -l | grep &#39;\.zip$\|\.rar$\|\.tar$\|\.gz$\|\.bz2$\|\.7z$\|\.xz$&#39; | wc -l
+</span></span></code></pre></div><p>检验当前文件下图片数目：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>ls -l | grep -i &#39;\.JPEG$\|\.jpg$\|\.jpeg$\|\.png$\|\.gif$\|\.bmp$&#39; | wc -l
+</span></span></code></pre></div><p>对于<code>ImageNet1k/ILSVRC2012</code>而言</p>
+<p><code>/ImageNet1k/ILSVRC2012/train</code>有1000个类别，存放在1000个文件夹之内，每个文件夹内图片数目不固定。</p>
+<p><code>/ImageNet1k/ILSVRC2012/val</code>有5000张图片。</p>
+<p><code>/ImageNet1k/ILSVRC2012/train</code>有10000张图片。</p>
+<p>以供检查校验。</p>
+
+				
+			</div>
+
+			<div class="tags">
+				
+					
+						<ul class="flat">
+							
+							<li><a href="/tags/dataset">DataSet</a></li>
+							
+						</ul>
+					
+				
+			</div></div>
+	</div>
+	
+
+<div class="footer wrapper">
+	<nav class="nav">
+		<div>2023  © Alkdis Chen |  <a href="https://github.com/knadh/hugo-ink">Ink</a> theme on <a href="https://gohugo.io">Hugo</a>  
+    
+    <div class="wrap">
+    
+
+        
+    </div>
+
+    
+    
+    
+    
+    </div>
+	</nav>
+</div>
+
+
+
+
+
+
+
+  
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-52525161-8', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+<script>feather.replace()</script>
+</body>
+</html>

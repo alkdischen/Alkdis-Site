@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>io_uring 的接口与实现 - Alkdis Chen</title><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta itemprop="name" content="io_uring 的接口与实现">
+<meta itemprop="description" content="io_uring 是 Linux 提供的一个异步 I/O 接口。io_uring 在 2019 年加入 Linux 内核，经过了两年的发展，现在已经变得非常强大。本文基于 Linux 5.12.10 介绍 io_uring 接口。
+io_uring 的实现主要在 fs/io_uring.c 中。
+io_uring 的 用户态 API io_uring 的实现仅仅使用了三个 syscall：io_uring_setup, io_uring_enter 和 io_uring_register。它们分别用于设置 io_uring 上下文，提交并获取完成任务，以及注册内核用户共享的缓冲区。使用前两个 syscall 已经足够使用 io_uring 接口了。
+用户和内核通过提交队列和完成队列进行任务的提交和收割。后文中会出现大量的简写，在这里先做一些介绍。
+缩略语 英语 中文 解析 SQ Submission Queue 提交队列 一整块连续的内存空间存储的环形队列。
+用于存放将执行操作的数据。 CQ Completion Queue 完成队列 一整块连续的内存空间存储的环形队列。
+用于存放完成操作返回的结果。 SQE Submission Queue Entry 提交队列项 提交队列中的一项。 CQE Completion Queue Entry 完成队列项 完成队列中的一项。 Ring Ring 环 比如 SQ Ring，就是“提交队列信息”的意思。"><meta itemprop="datePublished" content="2021-06-14T22:00:00+08:00" />
+<meta itemprop="dateModified" content="2021-06-14T22:00:00+08:00" />
+<meta itemprop="wordCount" content="875">
+<meta itemprop="keywords" content="io_uring,io-uring,Linux,代码解析," /><meta property="og:title" content="io_uring 的接口与实现" />
+<meta property="og:description" content="io_uring 是 Linux 提供的一个异步 I/O 接口。io_uring 在 2019 年加入 Linux 内核，经过了两年的发展，现在已经变得非常强大。本文基于 Linux 5.12.10 介绍 io_uring 接口。
+io_uring 的实现主要在 fs/io_uring.c 中。
+io_uring 的 用户态 API io_uring 的实现仅仅使用了三个 syscall：io_uring_setup, io_uring_enter 和 io_uring_register。它们分别用于设置 io_uring 上下文，提交并获取完成任务，以及注册内核用户共享的缓冲区。使用前两个 syscall 已经足够使用 io_uring 接口了。
+用户和内核通过提交队列和完成队列进行任务的提交和收割。后文中会出现大量的简写，在这里先做一些介绍。
+缩略语 英语 中文 解析 SQ Submission Queue 提交队列 一整块连续的内存空间存储的环形队列。
+用于存放将执行操作的数据。 CQ Completion Queue 完成队列 一整块连续的内存空间存储的环形队列。
+用于存放完成操作返回的结果。 SQE Submission Queue Entry 提交队列项 提交队列中的一项。 CQE Completion Queue Entry 完成队列项 完成队列中的一项。 Ring Ring 环 比如 SQ Ring，就是“提交队列信息”的意思。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.alkdischen.cn/posts/articles/2021-06-14-deep-dive-io-uring/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2021-06-14T22:00:00+08:00" />
+<meta property="article:modified_time" content="2021-06-14T22:00:00+08:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="io_uring 的接口与实现"/>
+<meta name="twitter:description" content="io_uring 是 Linux 提供的一个异步 I/O 接口。io_uring 在 2019 年加入 Linux 内核，经过了两年的发展，现在已经变得非常强大。本文基于 Linux 5.12.10 介绍 io_uring 接口。
+io_uring 的实现主要在 fs/io_uring.c 中。
+io_uring 的 用户态 API io_uring 的实现仅仅使用了三个 syscall：io_uring_setup, io_uring_enter 和 io_uring_register。它们分别用于设置 io_uring 上下文，提交并获取完成任务，以及注册内核用户共享的缓冲区。使用前两个 syscall 已经足够使用 io_uring 接口了。
+用户和内核通过提交队列和完成队列进行任务的提交和收割。后文中会出现大量的简写，在这里先做一些介绍。
+缩略语 英语 中文 解析 SQ Submission Queue 提交队列 一整块连续的内存空间存储的环形队列。
+用于存放将执行操作的数据。 CQ Completion Queue 完成队列 一整块连续的内存空间存储的环形队列。
+用于存放完成操作返回的结果。 SQE Submission Queue Entry 提交队列项 提交队列中的一项。 CQE Completion Queue Entry 完成队列项 完成队列中的一项。 Ring Ring 环 比如 SQ Ring，就是“提交队列信息”的意思。"/>
+<link href='https://fonts.googleapis.com/css?family=Playfair+Display:700' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/main.css" />
+
+        <link id="dark-scheme" rel="stylesheet" type="text/css" href="https://www.alkdischen.cn/css/dark.css" />
+
+	<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+		<script src="https://www.alkdischen.cn/js/main.js"></script>
+	
+</head>
+
+
+
+<body>
+	<div class="container wrapper">
+		<div class="header">
+	
+		<div class="avatar">
+			<a href="https://www.alkdischen.cn/">
+				<img src="https://picgo-1313480473.cos.ap-shanghai.myqcloud.com/Blog/sculpture.jpg" alt="Alkdis Chen" />
+			</a>
+		</div>
+	
+	<h1 class="site-title"><a href="https://www.alkdischen.cn/">Alkdis Chen</a></h1>
+	<div class="site-description"><p>Coding with wind</p><nav class="nav social">
+			<ul class="flat"><li><a href="https://github.com/ikoltech" title="GitHub"><i data-feather="github"></i></a></li></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+			<li>
+				<a href="/">Home</a>
+			</li>
+			
+			<li>
+				<a href="/posts">推文</a>
+			</li>
+			
+			<li>
+				<a href="/posts-ng">Posts</a>
+			</li>
+			
+			<li>
+				<a href="/pages/about">About</a>
+			</li>
+			
+			<li>
+				<a href="/tags">Tags</a>
+			</li>
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post">
+			<div class="post-header">
+				
+					
+						<div class="meta">
+							<div class="date">
+								<span class="day">14</span>
+								<span class="rest">Jun 2021</span>
+							</div>
+						</div>
+					
+				
+				<div class="matter">
+					<h1 class="title">io_uring 的接口与实现</h1>
+					
+				</div>
+			</div>
+					
+			<div>
+				
+					<nav id="TableOfContents">
+  <ul>
+    <li><a href="#io_uring-的-用户态-api">io_uring 的 用户态 API</a>
+      <ul>
+        <li><a href="#初始化-io_uring">初始化 io_uring</a></li>
+        <li><a href="#任务的描述">任务的描述</a></li>
+        <li><a href="#任务的提交与完成">任务的提交与完成</a></li>
+      </ul>
+    </li>
+    <li><a href="#io_uring-的实现">io_uring 的实现</a>
+      <ul>
+        <li><a href="#基于内核线程的任务执行">基于内核线程的任务执行</a></li>
+        <li><a href="#基于轮询的任务执行">基于轮询的任务执行</a></li>
+      </ul>
+    </li>
+    <li><a href="#io_uring-的任务依赖管理">io_uring 的任务依赖管理</a></li>
+    <li><a href="#总结与启示">总结与启示</a></li>
+    <li><a href="#附录">附录</a>
+      <ul>
+        <li><a href="#使用-fio-的-io_uring-模式进行测试">使用 fio 的 io_uring 模式进行测试</a></li>
+        <li><a href="#相关链接">相关链接</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+					<hr>
+				
+			</div>
+			<div class="markdown">
+				<p><code>io_uring</code> 是 Linux 提供的一个异步 I/O <code>接口。io_uring</code> 在 2019 年加入 Linux 内核，经过了两年的发展，现在已经变得非常强大。本文基于 Linux 5.12.10 介绍 <code>io_uring</code> 接口。</p>
+<p><code>io_uring</code> 的实现主要在 <a href="https://elixir.bootlin.com/linux/v5.12.10/source/fs/io_uring.c"><code>fs/io_uring.c</code></a> 中。</p>
+<h2 id="io_uring-的-用户态-api">io_uring 的 用户态 API</h2>
+<p><code>io_uring</code> 的实现仅仅使用了三个 syscall：<code>io_uring_setup</code>, <code>io_uring_enter</code> 和 <code>io_uring_register</code>。它们分别用于设置 <code>io_uring</code> 上下文，提交并获取完成任务，以及注册内核用户共享的缓冲区。使用前两个 syscall 已经足够使用 <code>io_uring</code> 接口了。</p>
+<p>用户和内核通过提交队列和完成队列进行任务的提交和收割。后文中会出现大量的简写，在这里先做一些介绍。</p>
+<table>
+<thead>
+<tr>
+<th>缩略语</th>
+<th>英语</th>
+<th>中文</th>
+<th>解析</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SQ</td>
+<td>Submission Queue</td>
+<td>提交队列</td>
+<td>一整块连续的内存空间存储的环形队列。<br>用于存放将执行操作的数据。</td>
+</tr>
+<tr>
+<td>CQ</td>
+<td>Completion Queue</td>
+<td>完成队列</td>
+<td>一整块连续的内存空间存储的环形队列。<br>用于存放完成操作返回的结果。</td>
+</tr>
+<tr>
+<td>SQE</td>
+<td>Submission Queue Entry</td>
+<td>提交队列项</td>
+<td>提交队列中的一项。</td>
+</tr>
+<tr>
+<td>CQE</td>
+<td>Completion Queue Entry</td>
+<td>完成队列项</td>
+<td>完成队列中的一项。</td>
+</tr>
+<tr>
+<td>Ring</td>
+<td>Ring</td>
+<td>环</td>
+<td>比如 SQ Ring，就是“提交队列信息”的意思。<br>包含队列数据、队列大小、丢失项等等信息。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="初始化-io_uring">初始化 io_uring</h3>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#2b91af">long</span> io_uring_setup(u32 entries, <span style="color:#00f">struct</span> io_uring_params __user *params)
+</span></span></code></pre></div><p>用户通过调用 <code>io_uring_setup</code> <sup id="fnref:1"><a href="#fn:1" class="footnote-ref" role="doc-noteref">1</a></sup> 初始化一个新的 <code>io_uring</code> 上下文。该函数返回一个 file descriptor，并将 <code>io_uring</code> 支持的功能、以及各个数据结构在 <code>fd</code> 中的偏移量存入 <code>params</code>。用户根据偏移量将 <code>fd</code> 映射到内存 (mmap) 后即可获得一块内核用户共享的内存区域。这块内存区域中，有 <code>io_uring</code> 的上下文信息：提交队列信息 (<code>SQ_RING</code>) 和完成队列信息 (<code>CQ_RING</code>)；还有一块专门用来存放提交队列元素的区域 (SQEs)。<code>SQ_RING</code> 中只存储 SQE 在 SQEs 区域中的序号，<code>CQ_RING</code> 存储完整的任务完成数据。<sup id="fnref:2"><a href="#fn:2" class="footnote-ref" role="doc-noteref">2</a></sup></p>
+<p><img src="memory_mapping.png" alt="Memory Mapping of io_uring_setup"></p>
+<p>在 Linux 5.12 中，SQE 大小为 64B，CQE 大小为 16B。因此，相同数量的 SQE 和 CQE 所需要的空间不一样。初始化 <code>io_uring</code> 时，用户如果不在 <code>params</code> 中设置 CQ 长度，内核会分配 <code>entries</code> 个 SQE，以及 <code>entries * 2</code> 个 CQE。</p>
+<p><code>io_uring_setup</code> 设计的巧妙之处在于，内核通过一块和用户共享的内存区域进行消息的传递。在创建上下文后，任务提交、任务收割等操作都通过这块共享的内存区域进行，在 <code>IO_SQPOLL</code> 模式下（后文将详细介绍），可以完全绕过 Linux 的 syscall 机制完成需要内核介入的操作（比如读写文件），大大减少了 syscall 切换上下文、刷 TLB 的开销。</p>
+<h3 id="任务的描述">任务的描述</h3>
+<p><code>io_uring</code> 可以处理多种 I/O 相关的请求。比如：</p>
+<ul>
+<li>文件相关：read, write, open, fsync, fallocate, fadvise, close</li>
+<li>网络相关：connect, accept, send, recv, epoll_ctl</li>
+<li>等等</li>
+</ul>
+<p>下面以 <code>fsync</code> 为例，介绍执行这个操作中可能用到的结构体和函数。</p>
+<h4 id="操作的定义与实现">操作的定义与实现</h4>
+<p><code>io_op_def io_op_defs[]</code> 数组中定义了 <code>io_uring</code> 支持的操作，以及它在 <code>io_uring</code> 中的一些参数。<sup id="fnref:3"><a href="#fn:3" class="footnote-ref" role="doc-noteref">3</a></sup> 比如 <code>IORING_OP_FSYNC</code>：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#00f">static</span> <span style="color:#00f">const</span> <span style="color:#00f">struct</span> io_op_def io_op_defs[] = {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>        [IORING_OP_FSYNC] = {
+</span></span><span style="display:flex;"><span>                .needs_file		= 1,
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        ...
+</span></span></code></pre></div><p><code>io_uring</code> 中几乎每个操作都有对应的准备和执行函数。比如 <code>fsync</code> 操作就对应 <code>io_fsync_prep</code> 和 <code>io_fsync</code> 函数。</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#00f">static</span> <span style="color:#2b91af">int</span> io_fsync_prep(<span style="color:#00f">struct</span> io_kiocb *req, <span style="color:#00f">const</span> <span style="color:#00f">struct</span> io_uring_sqe *sqe);
+</span></span><span style="display:flex;"><span><span style="color:#00f">static</span> <span style="color:#2b91af">int</span> io_fsync(<span style="color:#00f">struct</span> io_kiocb *req, <span style="color:#2b91af">unsigned</span> <span style="color:#2b91af">int</span> issue_flags);
+</span></span></code></pre></div><p>除了 <code>fsync</code> 这种同步（阻塞）操作，内核中还支持一些异步（非阻塞）调用的操作，比如 Direct I/O 模式下的文件读写。对于这些操作，<code>io_uring</code> 中还会有一个对应的异步准备函数，以 <code>_async</code> 结尾。比如：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#00f">static</span> <span style="color:#00f">inline</span> <span style="color:#2b91af">int</span> io_rw_prep_async(<span style="color:#00f">struct</span> io_kiocb *req, <span style="color:#2b91af">int</span> rw);
+</span></span></code></pre></div><p>这些函数就是 <code>io_uring</code> 对某个 I/O 操作的包装。</p>
+<h4 id="操作信息的传递">操作信息的传递</h4>
+<p>用户将需要进行的操作写入 <code>io_uring</code> 的 SQ 中。在 CQ 中，用户可以收割任务的完成情况。这里，我们介绍 SQE 和 CQE 的编码。</p>
+<p><code>include/uapi/linux/io_uring.h</code> <sup id="fnref:4"><a href="#fn:4" class="footnote-ref" role="doc-noteref">4</a></sup> 中定义了 SQE 和 CQE。SQE 是一个 64B 大小的结构体，里面包含了所有操作可能用到的信息。</p>
+<details>
+<summary><code>io_uring_sqe</code> 的定义</summary>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#00f">struct</span> io_uring_sqe {
+</span></span><span style="display:flex;"><span>        __u8	opcode;		<span style="color:#008000">/* type of operation for this sqe */</span>
+</span></span><span style="display:flex;"><span>        __u8	flags;		<span style="color:#008000">/* IOSQE_ flags */</span>
+</span></span><span style="display:flex;"><span>        __u16	ioprio;		<span style="color:#008000">/* ioprio for the request */</span>
+</span></span><span style="display:flex;"><span>        __s32	fd;		<span style="color:#008000">/* file descriptor to do IO on */</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">union</span> {
+</span></span><span style="display:flex;"><span>                __u64	off;	<span style="color:#008000">/* offset into file */</span>
+</span></span><span style="display:flex;"><span>                __u64	addr2;
+</span></span><span style="display:flex;"><span>        };
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">union</span> {
+</span></span><span style="display:flex;"><span>                __u64	addr;	<span style="color:#008000">/* pointer to buffer or iovecs */</span>
+</span></span><span style="display:flex;"><span>                __u64	splice_off_in;
+</span></span><span style="display:flex;"><span>        };
+</span></span><span style="display:flex;"><span>        __u32	len;		<span style="color:#008000">/* buffer size or number of iovecs */</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">union</span> {
+</span></span><span style="display:flex;"><span>                __kernel_rwf_t	rw_flags;
+</span></span><span style="display:flex;"><span>                __u32		fsync_flags;
+</span></span><span style="display:flex;"><span>                ...
+</span></span><span style="display:flex;"><span>        };
+</span></span><span style="display:flex;"><span>        __u64	user_data;	<span style="color:#008000">/* data to be passed back at completion time */</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">union</span> {
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>        };
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div></details>
+<p>CQE 是一个 16B 大小的结构体，包含操作的执行结果。</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-c" data-lang="c"><span style="display:flex;"><span><span style="color:#00f">struct</span> io_uring_cqe {
+</span></span><span style="display:flex;"><span>        __u64	user_data;	<span style="color:#008000">/* sqe-&gt;data submission passed back */</span>
+</span></span><span style="display:flex;"><span>        __s32	res;		<span style="color:#008000">/* result code for this event */</span>
+</span></span><span style="display:flex;"><span>        __u32	flags;
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>继续以 <code>fsync</code> 为例。要在 <code>io_uring</code> 中完成 <code>fsync</code> 操作，用户需要将 SQE 中的 <code>opcode</code> 设置为 <code>IORING_OP_FSYNC</code>，将  <code>fd</code> 设置为需要同步的文件，并填充 <code>fsync_flags</code>。其他操作也是类似，设置 opcode 并将操作所需要的参数并写入 SQE 即可。</p>
+<p>通常来说，使用 <code>io_uring</code> 的程序都需要用到 64 位的 <code>user_data</code> 来唯一标识一个操作 <sup id="fnref:5"><a href="#fn:5" class="footnote-ref" role="doc-noteref">5</a></sup>。<code>user_data</code> 是 SQE 的一部分。<code>io_uring</code> 执行完某个操作后，会将这个操作的 <code>user_data</code> 和操作的返回值一起写入 CQ 中。</p>
+<h3 id="任务的提交与完成">任务的提交与完成</h3>
+<p><code>io_uring</code> 通过环形队列和用户交互。</p>
+<p><img src="sqe_submit.png" alt="Submit SQE"></p>
+<p>我们的先以用户提交任务为例，介绍 <code>io_uring</code> 的内核用户交互方式。用户提交任务的过程如下：</p>
+<ul>
+<li>将 SQE 写入 SQEs 区域，而后将 SQE 编号写入 SQ。（对应图中绿色第一步）</li>
+<li>更新用户态记录的队头。（对应图中绿色第二步）</li>
+<li>如果有多个任务需要同时提交，用户不断重复上面的过程。</li>
+<li>将最终的队头编号写入与内核共享的 <code>io_uring</code> 上下文。（对应图中绿色第三步）</li>
+</ul>
+<p>接下来我们简要介绍内核获取任务、内核完成任务、用户收割任务的过程。</p>
+<ul>
+<li>内核态获取任务的方式是，从队尾读取 SQE，并更新 <code>io_uring</code> 上下文的 SQ tail。</li>
+</ul>
+<p><img src="cqe_retrieve.png" alt="Retrieve CQE"></p>
+<ul>
+<li>内核态完成任务：往 CQ 中写入 CQE，更新上下文 CQ head。</li>
+<li>用户态收割任务：从 CQ 中读取 CQE，更新上下文 CQ tail。</li>
+</ul>
+<h2 id="io_uring-的实现">io_uring 的实现</h2>
+<p>介绍完 <code>io_uring</code> 的用户态接口后，我们就可以详细介绍 <code>io_uring</code> 在内核中是如何实现的了。</p>
+<p><code>io_uring</code> 在创建时有两个选项，对应着 <code>io_uring</code> 处理任务的不同方式：</p>
+<ul>
+<li>开启 <code>IORING_SETUP_IOPOLL</code> 后，<code>io_uring</code> 会使用轮询的方式执行所有的操作。</li>
+<li>开启 <code>IORING_SETUP_SQPOLL</code> 后，<code>io_uring</code> 会创建一个内核线程专门用来收割用户提交的任务。</li>
+</ul>
+<p>这些选项的设定会影响之后用户与 <code>io_uring</code> 交互的方式：</p>
+<ul>
+<li>都不开启，通过 <code>io_uring_enter</code> 提交任务，收割任务无需 syscall。</li>
+<li>只开启 <code>IORING_SETUP_IOPOLL</code>，通过 <code>io_uring_enter</code> 提交任务和收割任务。</li>
+<li>开启 <code>IORING_SETUP_SQPOLL</code>，无需任何 syscall 即可提交、收割任务。内核线程在一段时间无操作后会休眠，可以通过 <code>io_uring_enter</code> 唤醒。</li>
+</ul>
+<h3 id="基于内核线程的任务执行">基于内核线程的任务执行</h3>
+<p>每个 <code>io_uring</code> 都由一个轻量级的 io-wq<sup id="fnref:6"><a href="#fn:6" class="footnote-ref" role="doc-noteref">6</a></sup> 线程池支持，从而实现 Buffered I/O 的异步执行。对于 Buffered I/O 来说，文件的内容可能在 page cache 里，也可能需要从盘上读取。如果文件的内容已经在 page cache 中，这些内容可以直接在 <code>io_uring_enter</code> 的时候读取到，并在返回用户态时收割。否则，读写操作会在 workqueue 里执行。</p>
+<p>如果没有在创建 <code>io_uring</code> 时指定 <code>IORING_SETUP_IOPOLL</code> 选项，<code>io_uring</code> 的操作就会放进 io-wq 中执行。</p>
+<p><img src="callgraph_waterfall_iowq.png" alt="Callgraph Waterfall when io-wq enabled"></p>
+<p>上图覆盖了关闭 <code>IOPOLL</code> 模式下，用户通过 <code>io_uring</code> 执行操作的整个调用流程。用户提交的 SQE 经过一系列处理后，会在 <code>io_queue_sqe</code> 中试探着执行一次。</p>
+<ul>
+<li>如果在 SQE 中指定了 <code>IOSQE_ASYNC</code> 选项，该操作会直接被放入 io-wq 队列。</li>
+<li>如果没有指定 <code>IOSQE_ASYNC</code> 选项，<code>io_uring</code> 会先用非阻塞模式尝试执行一次 SQE 中包含的操作。举个例子：执行 <code>io_read</code> 时，如果数据已经在 page cache 里面，非阻塞模式的 <code>io_read</code> 操作就会成功。如果成功，则直接返回。如果不成功，放入 io-wq 中。</li>
+</ul>
+<p>所有的操作都被提交到内核队列后，如果用户设置了 <code>IORING_ENTER_GETEVENTS</code> flag，<code>io_uring_enter</code> 在返回用户态前会等待指定个数的操作完成。</p>
+<p>之后，Linux 随时会调度 io-wq 的内核线程执行。此时，<code>io_wq_submit_work</code> 函数会不断用阻塞模式执行用户指定的操作。某个操作完整执行后，它的返回值就会被写入 CQ 中。用户通过 <code>io_uring</code> 上下文中的 CQ 队尾位置就能知道内核处理好了哪些操作，无需再次调用 <code>io_uring_enter</code>。</p>
+<p><img src="flamegraph_iowq.png" alt="Flamegraph when io-wq enabled"></p>
+<p>通过火焰图可以观察到，在关闭 IOPOLL 时，内核会花大量时间处理读取操作。</p>
+<h3 id="基于轮询的任务执行">基于轮询的任务执行</h3>
+<p>创建 <code>io_uring</code> 时指定 <code>IORING_SETUP_IOPOLL</code> 选项即可开启 I/O 轮询模式。通常来说，用 <code>O_DIRECT</code> 模式打开的文件支持使用轮询模式读写内容，执行 read / write 操作。</p>
+<p>在轮询模式下，<code>io_uring_enter</code> 只负责把操作提交到内核的文件读写队列中。之后，用户需要多次调用 <code>io_uring_enter</code> 来轮询操作是否完成。</p>
+<p><img src="callgraph_waterfall_iopoll.png" alt="Callgraph Waterfall in IOPOLL mode"></p>
+<p>在轮询模式下，io-wq 不会被使用。提交任务时，<code>io_read</code> 直接调用内核的 Direct I/O 接口向设备队列提交任务。</p>
+<p>如果用户设置了 <code>IORING_ENTER_GETEVENTS</code> flag，在返回用户态前，<code>io_uring_enter</code> 会通过 <code>io_iopoll_check</code> 调用内核接口轮询任务是否完成。</p>
+<p><img src="flamegraph_iopoll.png" alt="Flamegraph in IOPOLL mode"></p>
+<p>通过火焰图可以看到，<code>io_uring_enter</code> 在提交任务这一块只花了一小部分时间。大部分时间都在轮询 I/O 操作是否完成。</p>
+<h2 id="io_uring-的任务依赖管理">io_uring 的任务依赖管理</h2>
+<p>在实际生产环境中，我们往往会有这样的需求：往文件中写入 n 次，然后用 <code>fsync</code> 落盘。在使用 <code>io_uring</code> 时，SQ 中的任务不一定会按顺序执行。给操作设定 <code>IO_SQE_LINK</code> 选项，就可以建立任务之间的先后关系。<code>IO_SQE_LINK</code> 之后的第一个任务一定在当前任务完成后执行。<sup id="fnref:7"><a href="#fn:7" class="footnote-ref" role="doc-noteref">7</a></sup></p>
+<p><img src="submit_lifecycle.png" alt="Task Link"></p>
+<p><code>io_uring</code> 内部使用链表来管理任务的依赖关系。每一个操作在经过 <code>io_submit_sqe</code> 的处理后，都会变成一个 <code>io_kiocb</code> 对象。这个对象有可能会被放入链表中。<code>io_submit_sqe</code> <sup id="fnref:8"><a href="#fn:8" class="footnote-ref" role="doc-noteref">8</a></sup> 会对含有 <code>IO_SQE_LINK</code> 的 SQE 作特殊处理，处理过程如下：</p>
+<ul>
+<li>当前链表为空（之前的任务都没有 <code>IO_SQE_LINK</code>，或处理完了一个链），当前任务 <code>IO_SQE_LINK</code>，则创建一个新链表。</li>
+<li>链表已经被创建，新来的任务依然是 <code>IO_SQE_LINK</code>，则将当前任务放进链表。</li>
+<li>链表已经被创建，当前处理的任务没有 <code>IO_SQE_LINK</code>，将当前任务放入链表，并开始按顺序处理整个链表的操作。</li>
+</ul>
+<p>由此看来，SQ 中连续的 <code>IO_SQE_LINK</code> 记录会按先后关系依次处理。在 <code>io_submit_sqes</code> 结束前，所有的任务都会被提交。因此，如果任务有先后关系，它们必须在同一个 <code>io_uring_enter</code> syscall 中批量提交。</p>
+<p>其他用于控制 <code>io_uring</code> 任务依赖的选项包括 <code>IOSQE_IO_DRAIN</code> 和 <code>IOSQE_IO_HARDLINK</code>，这里不再展开。</p>
+<h2 id="总结与启示">总结与启示</h2>
+<ul>
+<li><code>io_uring</code> 大致可以分为默认、<code>IOPOLL</code>、<code>SQPOLL</code>、<code>IOPOLL + SQPOLL</code> 四种模式。可以根据操作是否需要轮询选择开启 <code>IOPOLL</code>。如果需要更高实时性、减少 syscall 开销，可以考虑开启 <code>SQPOLL</code>。</li>
+<li>如果只是使用 Buffered I/O，<code>io_uring</code> 相比于用户态直接调用 syscall，通常不会有特别大的性能提升。<code>io_uring</code> 内部通过 io-wq 执行 Buffered I/O 操作，和直接在用户态调用 syscall 在本质上没有太大区别，只能减小用户态内核态切换的开销。<code>io_uring</code> 提交任务要走一遍 <code>io_uring_enter</code> syscall，延迟和吞吐量应该比不上 mmap 之类的文件 I/O 操作方法。</li>
+<li>如果不想在提交时立刻尝试执行一次任务（比如之前提到的文件内容已经在 page cache 的情况），可以加上 <code>IOSQE_ASYNC</code> flag，强制走 io-wq。</li>
+<li>使用 <code>IO_SQE_LINK</code>, <code>IOSQE_IO_DRAIN</code> 和 <code>IOSQE_IO_HARDLINK</code> 可以控制任务的依赖关系。</li>
+</ul>
+<h2 id="附录">附录</h2>
+<h3 id="使用-fio-的-io_uring-模式进行测试">使用 fio 的 io_uring 模式进行测试</h3>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#008000"># 开启 SQPOLL + IOPOLL</span>
+</span></span><span style="display:flex;"><span>fio -size=32G -bs=1m -direct=1 -rw=randread -name=test -group_reporting -filename=./io.tmp -runtime 60 --ioengine=io_uring --iodepth=512 --sqthread_poll 1
+</span></span><span style="display:flex;"><span><span style="color:#008000"># 开启 SQPOLL</span>
+</span></span><span style="display:flex;"><span>fio -size=32G -bs=1m -direct=0 -rw=randread -name=test -group_reporting -filename=./io.tmp -runtime 60 --ioengine=io_uring --iodepth=512 --sqthread_poll 1
+</span></span><span style="display:flex;"><span><span style="color:#008000"># 开启 IOPOLL</span>
+</span></span><span style="display:flex;"><span>fio -size=32G -bs=1m -direct=1 -rw=randread -name=test -group_reporting -filename=./io.tmp -runtime 60 --ioengine=io_uring --iodepth=512
+</span></span><span style="display:flex;"><span><span style="color:#008000"># 关闭 IOPOLL</span>
+</span></span><span style="display:flex;"><span>fio -size=32G -bs=1m -direct=0 -rw=randread -name=test -group_reporting -filename=./io.tmp -runtime 60 --ioengine=io_uring --iodepth=512
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#008000"># 而后使用 bcc (eBPF) 跟踪内核函数调用，生成火焰图</span>
+</span></span><span style="display:flex;"><span>/usr/share/bcc/tools/profile -p <span style="color:#a31515">`</span>pidof fio<span style="color:#a31515">`</span> -f
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#008000"># 也可以使用 trace-cmd 跟踪内核函数调用 (Thanks @YangKeao)</span>
+</span></span><span style="display:flex;"><span>trace-cmd record -p function_graph -F [command]
+</span></span></code></pre></div><h3 id="相关链接">相关链接</h3>
+<ul>
+<li><a href="https://lore.kernel.org/linux-block/20190116175003.17880-6-axboe@kernel.dk/">io_uring 的第一组 patch</a></li>
+<li><a href="https://twitter.com/YangKeao/status/1402902939832750082">@YangKeao 谈 ftrace</a></li>
+</ul>
+<p>您可以在本文对应的 <a href="https://github.com/skyzh/skyzh.github.io/pull/2">GitHub Pull Request</a> 中评论这篇文章。</p>
+<div class="footnotes" role="doc-endnotes">
+<hr>
+<ol>
+<li id="fn:1">
+<p><a href="https://elixir.bootlin.com/linux/v5.12.10/source/fs/io_uring.c#L9658">[io_uring.c#L9658]</a>&#160;<a href="#fnref:1" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:2">
+<p><code>SQ_RING</code>, <code>CQ_RING</code> 的类型均为 <code>struct io_rings</code>, 存放提交队列元素的区域是 <code>struct io_uring_sqe</code> 的数组。事实上，单个 <code>io_rings</code> 结构体既包括 SQ 信息，也包括 CQ 信息。当前的 io_uring 实现中，SQ、CQ 对应的区域指向同一个 <code>io_rings</code> 结构体。举个例子，params 中有 <code>io_sqring_offsets sq_off</code>。通过 <code>*(sq_ring_ptr + sq_off.head)</code> 和 <code>*(cq_ring_ptr + sq_off.head)</code> 都可以访问到 SQ 的队首编号。&#160;<a href="#fnref:2" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:3">
+<p><a href="https://elixir.bootlin.com/linux/v5.12.10/source/fs/io_uring.c#L860">[io_uring.c#L860]</a>&#160;<a href="#fnref:3" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:4">
+<p><a href="https://elixir.bootlin.com/linux/v5.12.10/include/uapi/linux/io_uring.h"><code>include/uapi/linux/io_uring.h</code></a>&#160;<a href="#fnref:4" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:5">
+<p>大多数情况下，这个数据会是一个指针，指向该操作对应的用户上下文。本人之前的 <a href="/posts/articles/2021-01-30-async-random-read-with-rust/">在 Rust 中实现基于 <code>io_uring</code> 的异步随机读文件</a> 就介绍了一种 <code>io_uring</code> 的用户态接口实现。<code>user_data</code> 存储 <code>UringTask</code> 结构体的内存地址。&#160;<a href="#fnref:5" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:6">
+<p><a href="https://lore.kernel.org/linux-block/20191024134439.28498-1-axboe@kernel.dk/T/">io-wq patchset</a>&#160;<a href="#fnref:6" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:7">
+<p><a href="https://lore.kernel.org/linux-block/20190517214131.5925-1-axboe@kernel.dk/">[PATCHSET 0/3] io_uring: support for linked SQEs</a>, <a href="https://lore.kernel.org/linux-block/20190529202948.20833-1-axboe@kernel.dk/">[PATCHSET v2 0/3] io_uring: support for linked SQEs</a>&#160;<a href="#fnref:7" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+<li id="fn:8">
+<p><a href="https://elixir.bootlin.com/linux/v5.12.10/source/fs/io_uring.c#L6510">[fs/io_uring.c#L6510]</a>&#160;<a href="#fnref:8" class="footnote-backref" role="doc-backlink">&#x21a9;&#xfe0e;</a></p>
+</li>
+</ol>
+</div>
+
+				
+			</div>
+
+			<div class="tags">
+				
+					
+						<ul class="flat">
+							
+							<li><a href="/tags/io_uring">io_uring</a></li>
+							
+							<li><a href="/tags/io-uring">io-uring</a></li>
+							
+							<li><a href="/tags/linux">Linux</a></li>
+							
+							<li><a href="/tags/%E4%BB%A3%E7%A0%81%E8%A7%A3%E6%9E%90">代码解析</a></li>
+							
+						</ul>
+					
+				
+			</div></div>
+	</div>
+	
+
+<div class="footer wrapper">
+	<nav class="nav">
+		<div>2023  © Alkdis Chen |  <a href="https://github.com/knadh/hugo-ink">Ink</a> theme on <a href="https://gohugo.io">Hugo</a>  
+    
+    <div class="wrap">
+    
+
+        
+    </div>
+
+    
+    
+    
+    
+    </div>
+	</nav>
+</div>
+
+
+
+
+
+
+
+  
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-52525161-8', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+<script>feather.replace()</script>
+</body>
+</html>

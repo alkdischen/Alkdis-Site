@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>DataSet on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/tags/dataset/</link>
+    <description>Recent content in DataSet on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Sun, 06 Aug 2023 11:45:42 +0000</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/dataset/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>[DataSet] ImageNet-1k处理</title>
+      <link>https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/</link>
+      <pubDate>Sun, 06 Aug 2023 11:45:42 +0000</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/</guid>
+      <description>前言 由于每次在云服务器上处理数据都需要进行数据集下载与处理，因此写一篇post来记录ImageNet的处理过程。
+ImageNet的重要性不遑多言，官方下载网站为：https://image-net.org/download.php，需要提前注册号账号，且下载速度较慢，建议使用云盘下载。
+这里列出百度云下载链接：
+https://pan.baidu.com/s/1Nhd7YB-xBXPYj7y9cNOedQ 提取码：ufxe 数据集类别 目前主流数据集又ImageNet-1k和ImageNet-22k，数字代表类别数目不同。
+ImageNet有不同年份的数据集，一般使用ILSVRC2012版本，为2012年的ILSVR大赛数据集。
+观察下载数据，可以发现分为三大类：
+bbox devkit img 如果只是用于日常训练，只需要考虑img数据集，本文也只会探讨img数据集的处理。
+观察img数据，发现分为四个文件，分别为：
+train train_t3 val test 它们分别是训练集，验证集与测试集。特别的，train_t3为新增的训练任务，具体内容可以去官网查看，一般不用考虑使用。
+因此，我们最终需要使用的文件名称为
+ILSVRC2012_img_train.tar ILSVRC2012_img_val.tar ILSVRC2012_img_test.tar 下载到服务器即可，建议存放到单独的文件夹，本文以文件夹 /ImageNet1k/ILSVRC2012/作为根目录为例。
+数据集处理 tar文件的解压很简单，使用指令
+tar -xvf 文件名 即可解压到当前目录，因此建议分别解压到/ImageNet1k/ILSVRC2012/train，/ImageNet1k/ILSVRC2012/val和/ImageNet1k/ILSVRC2012/test目录即可，将文件mv到相应目录，然后解压即可。
+值得一提的是，val和test文件全都是图片，只需要正常解压就行，但是train不是，内部是1000个压缩包，每个压缩包代表一个类别的图片压缩集合，需要特别处理。
+训练集处理 进入到训练集的目录/ImageNet1k/ILSVRC2012/train，确定好压缩包数目为1000个，随后进行批量解压缩，指令为
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &amp;#34;$file&amp;#34; .tar) mkdir &amp;#34;/ImageNet1k/ILSVRC2012/train$dir&amp;#34; tar -xvf &amp;#34;$file&amp;#34; -C &amp;#34;ImageNet1k/ILSVRC2012/train/$dir&amp;#34; done 随后会将所有的压缩包解压到单独的以自身文件名称命名的文件夹之中。
+如果空间不充足，可以边解压边删除，增加一句rm &amp;quot;$file&amp;quot;即可：
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &amp;#34;$file&amp;#34; .tar) mkdir &amp;#34;/ImageNet1k/ILSVRC2012/train$dir&amp;#34; tar -xvf &amp;#34;$file&amp;#34; -C &amp;#34;ImageNet1k/ILSVRC2012/train/$dir&amp;#34; rm &amp;#34;$file&amp;#34; done 至此ImageNet1k数据集的处理结束。</description>
+    </item>
+    
+  </channel>
+</rss>

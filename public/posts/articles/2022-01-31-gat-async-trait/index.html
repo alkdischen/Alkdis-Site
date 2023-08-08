@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>在 Rust 中用 GAT 手动实现零开销 async trait - Alkdis Chen</title><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta itemprop="name" content="在 Rust 中用 GAT 手动实现零开销 async trait">
+<meta itemprop="description" content="在这篇文章中，我们将以实现类似 RocksDB 的一系列 iterator 为例，讲解如何在 Rust 中用 GAT 实现零开销 async trait。本文中的代码需要 nightly Rust 才能编译。
+我们将会实现两个 iterator：
+TestIterator：产生一个有序的 KV 序列。 ConcatIterator：将多个 iterator 的序列拼接起来。 举例：TestIterator::new(0, 5) 会产生下面的序列：
+key_00000 -&gt; value_00000 key_00001 -&gt; value_00001 key_00002 -&gt; value_00002 key_00003 -&gt; value_00003 key_00004 -&gt; value_00004 ConcatIterator::new(vec![TestIterator::new(0, 5), TestIterator::new(5, 7)]) 会产生：
+key_00000 -&gt; value_00000 key_00001 -&gt; value_00001 key_00002 -&gt; value_00002 key_00003 -&gt; value_00003 key_00004 -&gt; value_00004 key_00005 -&gt; value_00005 key_00006 -&gt; value_00006 定义 async trait KvIterator 是将会给所有 iterator 实现的一个 trait。用户可以调用 ."><meta itemprop="datePublished" content="2022-01-31T23:00:00+17:00" />
+<meta itemprop="dateModified" content="2022-01-31T23:00:00+17:00" />
+<meta itemprop="wordCount" content="1294">
+<meta itemprop="keywords" content="Rust,GAT,async,异步,零开销," /><meta property="og:title" content="在 Rust 中用 GAT 手动实现零开销 async trait" />
+<meta property="og:description" content="在这篇文章中，我们将以实现类似 RocksDB 的一系列 iterator 为例，讲解如何在 Rust 中用 GAT 实现零开销 async trait。本文中的代码需要 nightly Rust 才能编译。
+我们将会实现两个 iterator：
+TestIterator：产生一个有序的 KV 序列。 ConcatIterator：将多个 iterator 的序列拼接起来。 举例：TestIterator::new(0, 5) 会产生下面的序列：
+key_00000 -&gt; value_00000 key_00001 -&gt; value_00001 key_00002 -&gt; value_00002 key_00003 -&gt; value_00003 key_00004 -&gt; value_00004 ConcatIterator::new(vec![TestIterator::new(0, 5), TestIterator::new(5, 7)]) 会产生：
+key_00000 -&gt; value_00000 key_00001 -&gt; value_00001 key_00002 -&gt; value_00002 key_00003 -&gt; value_00003 key_00004 -&gt; value_00004 key_00005 -&gt; value_00005 key_00006 -&gt; value_00006 定义 async trait KvIterator 是将会给所有 iterator 实现的一个 trait。用户可以调用 ." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.alkdischen.cn/posts/articles/2022-01-31-gat-async-trait/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-01-31T23:00:00+17:00" />
+<meta property="article:modified_time" content="2022-01-31T23:00:00+17:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="在 Rust 中用 GAT 手动实现零开销 async trait"/>
+<meta name="twitter:description" content="在这篇文章中，我们将以实现类似 RocksDB 的一系列 iterator 为例，讲解如何在 Rust 中用 GAT 实现零开销 async trait。本文中的代码需要 nightly Rust 才能编译。
+我们将会实现两个 iterator：
+TestIterator：产生一个有序的 KV 序列。 ConcatIterator：将多个 iterator 的序列拼接起来。 举例：TestIterator::new(0, 5) 会产生下面的序列：
+key_00000 -&gt; value_00000 key_00001 -&gt; value_00001 key_00002 -&gt; value_00002 key_00003 -&gt; value_00003 key_00004 -&gt; value_00004 ConcatIterator::new(vec![TestIterator::new(0, 5), TestIterator::new(5, 7)]) 会产生：
+key_00000 -&gt; value_00000 key_00001 -&gt; value_00001 key_00002 -&gt; value_00002 key_00003 -&gt; value_00003 key_00004 -&gt; value_00004 key_00005 -&gt; value_00005 key_00006 -&gt; value_00006 定义 async trait KvIterator 是将会给所有 iterator 实现的一个 trait。用户可以调用 ."/>
+<link href='https://fonts.googleapis.com/css?family=Playfair+Display:700' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/main.css" />
+
+        <link id="dark-scheme" rel="stylesheet" type="text/css" href="https://www.alkdischen.cn/css/dark.css" />
+
+	<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+		<script src="https://www.alkdischen.cn/js/main.js"></script>
+	
+</head>
+
+
+
+<body>
+	<div class="container wrapper">
+		<div class="header">
+	
+		<div class="avatar">
+			<a href="https://www.alkdischen.cn/">
+				<img src="https://picgo-1313480473.cos.ap-shanghai.myqcloud.com/Blog/sculpture.jpg" alt="Alkdis Chen" />
+			</a>
+		</div>
+	
+	<h1 class="site-title"><a href="https://www.alkdischen.cn/">Alkdis Chen</a></h1>
+	<div class="site-description"><p>Coding with wind</p><nav class="nav social">
+			<ul class="flat"><li><a href="https://github.com/ikoltech" title="GitHub"><i data-feather="github"></i></a></li></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+			<li>
+				<a href="/">Home</a>
+			</li>
+			
+			<li>
+				<a href="/posts">推文</a>
+			</li>
+			
+			<li>
+				<a href="/posts-ng">Posts</a>
+			</li>
+			
+			<li>
+				<a href="/pages/about">About</a>
+			</li>
+			
+			<li>
+				<a href="/tags">Tags</a>
+			</li>
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post">
+			<div class="post-header">
+				
+					
+						<div class="meta">
+							<div class="date">
+								<span class="day">31</span>
+								<span class="rest">Jan 2022</span>
+							</div>
+						</div>
+					
+				
+				<div class="matter">
+					<h1 class="title">在 Rust 中用 GAT 手动实现零开销 async trait</h1>
+					
+				</div>
+			</div>
+					
+			<div>
+				
+					<nav id="TableOfContents">
+  <ul>
+    <li><a href="#定义-async-trait">定义 async trait</a></li>
+    <li><a href="#使用-gat-写-async-trait">使用 GAT 写 async trait</a></li>
+    <li><a href="#实现-testiterator">实现 TestIterator</a></li>
+    <li><a href="#实现-concatiterator">实现 ConcatIterator</a>
+      <ul>
+        <li><a href="#方案一换个-borrow-checker">方案一：换个 Borrow Checker</a></li>
+        <li><a href="#方案二在结构体内暂存-key-value">方案二：在结构体内暂存 key value</a></li>
+        <li><a href="#方案三重构-kviterator-trait">方案三：重构 <code>KvIterator</code> trait</a></li>
+      </ul>
+    </li>
+    <li><a href="#总结">总结</a></li>
+  </ul>
+</nav>
+					<hr>
+				
+			</div>
+			<div class="markdown">
+				<p>在这篇文章中，我们将以实现类似 RocksDB 的一系列 iterator 为例，讲解如何在 Rust 中用 GAT 实现零开销 async trait。本文中的代码需要 nightly Rust 才能编译。</p>
+<p>我们将会实现两个 iterator：</p>
+<ul>
+<li>TestIterator：产生一个有序的 KV 序列。</li>
+<li>ConcatIterator：将多个 iterator 的序列拼接起来。</li>
+</ul>
+<p>举例：<code>TestIterator::new(0, 5)</code> 会产生下面的序列：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-plain" data-lang="plain"><span style="display:flex;"><span>key_00000 -&gt; value_00000
+</span></span><span style="display:flex;"><span>key_00001 -&gt; value_00001
+</span></span><span style="display:flex;"><span>key_00002 -&gt; value_00002
+</span></span><span style="display:flex;"><span>key_00003 -&gt; value_00003
+</span></span><span style="display:flex;"><span>key_00004 -&gt; value_00004
+</span></span></code></pre></div><p><code>ConcatIterator::new(vec![TestIterator::new(0, 5), TestIterator::new(5, 7)])</code> 会产生：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-plain" data-lang="plain"><span style="display:flex;"><span>key_00000 -&gt; value_00000
+</span></span><span style="display:flex;"><span>key_00001 -&gt; value_00001
+</span></span><span style="display:flex;"><span>key_00002 -&gt; value_00002
+</span></span><span style="display:flex;"><span>key_00003 -&gt; value_00003
+</span></span><span style="display:flex;"><span>key_00004 -&gt; value_00004
+</span></span><span style="display:flex;"><span>key_00005 -&gt; value_00005
+</span></span><span style="display:flex;"><span>key_00006 -&gt; value_00006
+</span></span></code></pre></div><h2 id="定义-async-trait">定义 async trait</h2>
+<p><code>KvIterator</code> 是将会给所有 iterator 实现的一个 trait。用户可以调用 <code>.next()</code> 来将迭代器移动到下一个位置。</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">trait</span> KvIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the next item from the iterator.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">async</span> <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; Option&lt;(&amp;[<span style="color:#2b91af">u8</span>], &amp;[<span style="color:#2b91af">u8</span>])&gt;;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>随手一编译，报错：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-plain" data-lang="plain"><span style="display:flex;"><span>error[E0706]: functions in traits cannot be declared `async`
+</span></span><span style="display:flex;"><span> --&gt; src/kv_iterator.rs:5:5
+</span></span><span style="display:flex;"><span>  |
+</span></span><span style="display:flex;"><span>5 |     async fn next(&amp;mut self) -&gt; Option&lt;(&amp;[u8], &amp;[u8])&gt;;
+</span></span><span style="display:flex;"><span>  |     -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+</span></span><span style="display:flex;"><span>  |     |
+</span></span><span style="display:flex;"><span>  |     `async` because of this
+</span></span><span style="display:flex;"><span>  |
+</span></span><span style="display:flex;"><span>  = note: `async` trait functions are not currently supported
+</span></span><span style="display:flex;"><span>  = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
+</span></span></code></pre></div><p>Rust 编译器默认不支持 <code>async</code> trait function。编译器提示说使用 <code>async-trait</code> 这个 crate。可惜的是，这个 crate 不是零开销的。使用 <code>async-trait</code> 之后，这个 trait 会被改写成下面的形式：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">#[async_trait]</span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">trait</span> KvIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the next item from the iterator.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">async</span> <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; Option&lt;(&amp;[<span style="color:#2b91af">u8</span>], &amp;[<span style="color:#2b91af">u8</span>])&gt;;
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#a31515">/// ... will be rewritten to
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">trait</span> KvIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the next item from the iterator.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; Box&lt;<span style="color:#00f">dyn</span> Future&lt;Output = Option&lt;(&amp;[<span style="color:#2b91af">u8</span>], &amp;[<span style="color:#2b91af">u8</span>])&gt;&gt;&gt;;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这里就有两层开销了：</p>
+<ul>
+<li>动态调度的开销 <code>dyn Future</code>。这意味着所有迭代器的 next 函数都比较难做一些编译器的优化。</li>
+<li>内存分配的开销 <code>Box</code>。在 KV 存储里，<code>next</code> 应该是一个会被经常调用的函数。trait 被 async-trait 改写成新的形式之后，每次调用 <code>.next</code> 都需要在堆上新建一个对象。这会对程序的性能造成比较大的影响。</li>
+</ul>
+<p>如何零开销地实现 async trait 呢？这就需要 GAT 了。</p>
+<h2 id="使用-gat-写-async-trait">使用 GAT 写 async trait</h2>
+<p>编译器没有支持 async trait，本质上是因为不同的 impl <code>KvIterator</code> 的 <code>.next</code> 函数返回的 <code>Future</code> 类型是不同的。这个问题可以用 associated type 简单地解决：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">trait</span> KvIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>: <span style="color:#2b91af">Future</span>&lt;Output = Option&lt;(&amp;[<span style="color:#2b91af">u8</span>], &amp;[<span style="color:#2b91af">u8</span>])&gt;&gt;;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the next item from the iterator.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这里就引入了一个问题：<code>&amp;'lifetime [u8]</code> 需要有一个生命周期，这个生命周期应该怎么写？从道理上来讲，<code>'lifetime</code> 和 <code>next</code> 的 <code>&amp;mut self</code> 生命周期一致，所以它应该是 <code>NextFuture</code> 本身的一个泛型。在 Rust 里怎么表达这件事情？显然这就需要 generic associated type 了。开启 GAT 的编译选项后：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">trait</span> KvIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>&lt;&#39;a&gt;: <span style="color:#2b91af">Future</span>&lt;Output = Option&lt;(&amp;&#39;a [<span style="color:#2b91af">u8</span>], &amp;&#39;a [<span style="color:#2b91af">u8</span>])&gt;&gt;;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the next item from the iterator.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture&lt;&#39;_&gt;;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>编译器又报了一个错：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>error: <span style="color:#2b91af">missing</span> required bound on <span style="">`</span>NextFuture<span style="">`</span>
+</span></span><span style="display:flex;"><span> --&gt; <span style="color:#2b91af">src</span>/kv_iterator.rs:4:5
+</span></span><span style="display:flex;"><span>  |
+</span></span><span style="display:flex;"><span>4 |     <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>&lt;&#39;a&gt;: <span style="color:#2b91af">Future</span>&lt;Output = Option&lt;(&amp;&#39;a [<span style="color:#2b91af">u8</span>], &amp;&#39;a [<span style="color:#2b91af">u8</span>])&gt;&gt;;
+</span></span><span style="display:flex;"><span>  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+</span></span><span style="display:flex;"><span>  |                                                                       |
+</span></span><span style="display:flex;"><span>  |                                                                       help: <span style="color:#2b91af">add</span> the required <span style="color:#00f">where</span> clause: <span style="">`</span><span style="color:#00f">where</span> Self: &#39;a<span style="">`</span>
+</span></span><span style="display:flex;"><span>  |
+</span></span><span style="display:flex;"><span>  = note: <span style="color:#2b91af">this</span> bound is currently required to ensure that impls have maximum flexibility
+</span></span><span style="display:flex;"><span>  = note: <span style="color:#2b91af">we</span> are soliciting feedback, see issue #87479 &lt;https:<span style="color:#008000">//github.com/rust-lang/rust/issues/87479&gt; for more information
+</span></span></span></code></pre></div><p>这是为什么捏？</p>
+<p><code>NextFuture</code> 是由 <code>next</code> 函数返回的，而一个正常实现的 <code>next</code> 函数，只能返回和 <code>&amp;mut self</code> 生命周期相同的引用。Rust 的 trait 可以实现在一个引用上 (e.g., <code>impl &lt;'a&gt; Iterator for &amp;'a mut SomeIterator</code>)。如果 <code>Self</code> (在上面的例子里，<code>&amp;'a mut SomeIterator</code>) 本身的生命周期比这个引用还要短，就不可能返回这样一个 <code>NextFuture</code> 了。</p>
+<p>所以在这里，我们需要加一个 <code>where Self: 'a</code>，保证 <code>Self</code> 的生命周期至少和 <code>NextFuture</code> 的 <code>'a</code> 一样长。</p>
+<p>在老版本的 Rust 编译器里，这个地方不加 <code>Self: 'a</code> 并不会这样报错，而是会报在一些奇奇怪怪的地方。编译器能直接在这里指出这个问题，是件好事情。</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">trait</span> KvIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>&lt;&#39;a&gt;: <span style="color:#2b91af">Future</span>&lt;Output = Option&lt;(&amp;&#39;a [<span style="color:#2b91af">u8</span>], &amp;&#39;a [<span style="color:#2b91af">u8</span>])&gt;&gt;
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">where</span>
+</span></span><span style="display:flex;"><span>        Self: &#39;a;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the next item from the iterator.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture&lt;&#39;_&gt;;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这样就能通过编译了！</p>
+<h2 id="实现-testiterator">实现 TestIterator</h2>
+<p>首先快速地写出 <code>TestIterator</code> 的框架：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">struct</span> <span style="color:#2b91af">TestIterator</span> {
+</span></span><span style="display:flex;"><span>    idx: <span style="color:#2b91af">usize</span>
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span> KvIterator <span style="color:#00f">for</span> TestIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span> = <span style="color:#008000">/* */</span>;
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture&lt;&#39;_&gt; {
+</span></span><span style="display:flex;"><span>        
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这里碰到了两个问题：</p>
+<ul>
+<li><code>next</code> 里面应该怎么写逻辑？<code>next</code> 返回的是一个 Future，并不是常见的 <code>async fn</code>。
+<ul>
+<li>答案很简单，用 <code>async move</code> 返回一个闭包。</li>
+</ul>
+</li>
+<li>既然 <code>next</code> 返回一个函数，<code>NextFuture</code> 的类型怎么写？众所周知，Rust 的函数是写不出类型的。
+<ul>
+<li>这里就要开启一个 feature，让编译器自动推导 <code>Future</code> 的具体类型。</li>
+</ul>
+</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">#![feature(generic_associated_types)]</span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">#![feature(type_alias_impl_trait)]</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">struct</span> <span style="color:#2b91af">TestIterator</span> {
+</span></span><span style="display:flex;"><span>    idx: <span style="color:#2b91af">usize</span>,
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span> KvIterator <span style="color:#00f">for</span> TestIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>&lt;&#39;a&gt; = <span style="color:#00f">impl</span> Future&lt;Output = Option&lt;(&amp;&#39;a [<span style="color:#2b91af">u8</span>], &amp;&#39;a [<span style="color:#2b91af">u8</span>])&gt;&gt;;
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture&lt;&#39;_&gt; {
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">async</span> <span style="color:#00f">move</span> { Some((<span style="color:#a31515">b</span><span style="color:#a31515">&#34;key&#34;</span>.as_slice(), <span style="color:#a31515">b</span><span style="color:#a31515">&#34;value&#34;</span>.as_slice())) }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>这样一来，就可以通过编译了！随手实现一下 <code>TestIterator</code> 内部的逻辑：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">struct</span> <span style="color:#2b91af">TestIterator</span> {
+</span></span><span style="display:flex;"><span>    idx: <span style="color:#2b91af">usize</span>,
+</span></span><span style="display:flex;"><span>    to_idx: <span style="color:#2b91af">usize</span>,
+</span></span><span style="display:flex;"><span>    key: Vec&lt;<span style="color:#2b91af">u8</span>&gt;,
+</span></span><span style="display:flex;"><span>    value: Vec&lt;<span style="color:#2b91af">u8</span>&gt;,
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span> TestIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">pub</span> <span style="color:#00f">fn</span> new(from_idx: <span style="color:#2b91af">usize</span>, to_idx: <span style="color:#2b91af">usize</span>) -&gt; <span style="color:#2b91af">Self</span> {
+</span></span><span style="display:flex;"><span>        Self {
+</span></span><span style="display:flex;"><span>            idx: <span style="color:#2b91af">from_idx</span>,
+</span></span><span style="display:flex;"><span>            to_idx,
+</span></span><span style="display:flex;"><span>            key: Vec::new(),
+</span></span><span style="display:flex;"><span>            value: Vec::new(),
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span> KvIterator <span style="color:#00f">for</span> TestIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>&lt;&#39;a&gt;
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">where</span>
+</span></span><span style="display:flex;"><span>        Self: &#39;a,
+</span></span><span style="display:flex;"><span>    = <span style="color:#00f">impl</span> Future&lt;Output = Option&lt;(&amp;&#39;a [<span style="color:#2b91af">u8</span>], &amp;&#39;a [<span style="color:#2b91af">u8</span>])&gt;&gt;;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture&lt;&#39;_&gt; {
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">async</span> <span style="color:#00f">move</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#00f">if</span> self.idx &gt;= self.to_idx {
+</span></span><span style="display:flex;"><span>                <span style="color:#00f">return</span> None;
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            <span style="color:#008000">// Zero-allocation key value manipulation
+</span></span></span><span style="display:flex;"><span><span style="color:#008000"></span>
+</span></span><span style="display:flex;"><span>            self.key.clear();
+</span></span><span style="display:flex;"><span>            write!(&amp;<span style="color:#00f">mut</span> self.key, <span style="color:#a31515">&#34;key_{:05}&#34;</span>, self.idx).unwrap();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            self.value.clear();
+</span></span><span style="display:flex;"><span>            write!(&amp;<span style="color:#00f">mut</span> self.value, <span style="color:#a31515">&#34;value_{:05}&#34;</span>, self.idx).unwrap();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>            self.idx += 1;
+</span></span><span style="display:flex;"><span>            Some((&amp;self.key[..], &amp;self.value[..]))
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>测试一下 <code>TestIterator</code> 能不能正常工作：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">#[tokio::test]</span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">async</span> <span style="color:#00f">fn</span> test_iterator() {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">let</span> <span style="color:#00f">mut</span> iter = TestIterator::new(0, 10);
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">while</span> <span style="color:#00f">let</span> Some((key, value)) = iter.next().<span style="color:#00f">await</span> {
+</span></span><span style="display:flex;"><span>        println!(
+</span></span><span style="display:flex;"><span>            <span style="color:#a31515">&#34;</span><span style="color:#a31515">{:?}</span><span style="color:#a31515"> </span><span style="color:#a31515">{:?}</span><span style="color:#a31515">&#34;</span>,
+</span></span><span style="display:flex;"><span>            Bytes::copy_from_slice(key),
+</span></span><span style="display:flex;"><span>            Bytes::copy_from_slice(value)
+</span></span><span style="display:flex;"><span>        );
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>跑一下测试，符合预期，成功！</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-plain" data-lang="plain"><span style="display:flex;"><span>running 1 test
+</span></span><span style="display:flex;"><span>b&#34;key_00000&#34; b&#34;value_00000&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00001&#34; b&#34;value_00001&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00002&#34; b&#34;value_00002&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00003&#34; b&#34;value_00003&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00004&#34; b&#34;value_00004&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00005&#34; b&#34;value_00005&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00006&#34; b&#34;value_00006&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00007&#34; b&#34;value_00007&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00008&#34; b&#34;value_00008&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00009&#34; b&#34;value_00009&#34;
+</span></span><span style="display:flex;"><span>test test_iterator::tests::test_iterator ... ok
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+</span></span></code></pre></div><h2 id="实现-concatiterator">实现 ConcatIterator</h2>
+<p><code>ConcatIterator</code> 的逻辑也非常简单：记录一下现在在访问哪个迭代器，直接把子迭代器的内容返回就行了：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">struct</span> <span style="color:#2b91af">ConcatIterator</span>&lt;Iter: <span style="color:#2b91af">KvIterator</span>&gt; {
+</span></span><span style="display:flex;"><span>    iters: Vec&lt;Iter&gt;,
+</span></span><span style="display:flex;"><span>    current_idx: <span style="color:#2b91af">usize</span>,
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span>&lt;Iter: <span style="color:#2b91af">KvIterator</span>&gt; ConcatIterator&lt;Iter&gt; {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">pub</span> <span style="color:#00f">fn</span> new(iters: Vec&lt;Iter&gt;) -&gt; <span style="color:#2b91af">Self</span> {
+</span></span><span style="display:flex;"><span>        Self {
+</span></span><span style="display:flex;"><span>            iters,
+</span></span><span style="display:flex;"><span>            current_idx: 0,
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span>&lt;Iter: <span style="color:#2b91af">KvIterator</span>&gt; KvIterator <span style="color:#00f">for</span> ConcatIterator&lt;Iter&gt; {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>&lt;&#39;a&gt;
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">where</span>
+</span></span><span style="display:flex;"><span>        Self: &#39;a,
+</span></span><span style="display:flex;"><span>    = <span style="color:#00f">impl</span> Future&lt;Output = Option&lt;(&amp;&#39;a [<span style="color:#2b91af">u8</span>], &amp;&#39;a [<span style="color:#2b91af">u8</span>])&gt;&gt;;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture&lt;&#39;_&gt; {
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">async</span> <span style="color:#00f">move</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#00f">loop</span> {
+</span></span><span style="display:flex;"><span>                <span style="color:#00f">if</span> self.current_idx &gt;= self.iters.len() {
+</span></span><span style="display:flex;"><span>                    <span style="color:#00f">return</span> None;
+</span></span><span style="display:flex;"><span>                }
+</span></span><span style="display:flex;"><span>                <span style="color:#00f">let</span> iter = &amp;<span style="color:#00f">mut</span> self.iters[self.current_idx];
+</span></span><span style="display:flex;"><span>                <span style="color:#00f">match</span> iter.next().<span style="color:#00f">await</span> {
+</span></span><span style="display:flex;"><span>                    Some(item) =&gt; {
+</span></span><span style="display:flex;"><span>                        <span style="color:#00f">return</span> Some(item);
+</span></span><span style="display:flex;"><span>                    }
+</span></span><span style="display:flex;"><span>                    None =&gt; {
+</span></span><span style="display:flex;"><span>                        self.current_idx += 1;
+</span></span><span style="display:flex;"><span>                    }
+</span></span><span style="display:flex;"><span>                }
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>然而，事情没那么简单。编译器报了一个错：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-plain" data-lang="plain"><span style="display:flex;"><span>error[E0502]: cannot borrow `self.iters` as immutable because it is also borrowed as mutable
+</span></span><span style="display:flex;"><span>  --&gt; src/concat_iterator.rs:28:40
+</span></span><span style="display:flex;"><span>   |
+</span></span><span style="display:flex;"><span>28 |                 if self.current_idx &gt;= self.iters.len() {
+</span></span><span style="display:flex;"><span>   |                                        ^^^^^^^^^^^^^^^^ immutable borrow occurs here
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>31 |                 let iter = &amp;mut self.iters[self.current_idx];
+</span></span><span style="display:flex;"><span>   |                                 ---------- mutable borrow occurs here
+</span></span><span style="display:flex;"><span>32 |                 match iter.next().await {
+</span></span><span style="display:flex;"><span>33 |                     Some(item) =&gt; return Some(item),
+</span></span><span style="display:flex;"><span>   |                                          ---------- returning this value requires that `self.iters` is borrowed for `&#39;1`
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>37 |         }
+</span></span><span style="display:flex;"><span>   |         - return type of async block is Option&lt;(&amp;&#39;1 [u8], &amp;[u8])&gt;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>error[E0499]: cannot borrow `self.iters` as mutable more than once at a time
+</span></span><span style="display:flex;"><span>  --&gt; src/concat_iterator.rs:31:33
+</span></span><span style="display:flex;"><span>   |
+</span></span><span style="display:flex;"><span>31 |                 let iter = &amp;mut self.iters[self.current_idx];
+</span></span><span style="display:flex;"><span>   |                                 ^^^^^^^^^^ `self.iters` was mutably borrowed here in the previous iteration of the loop
+</span></span><span style="display:flex;"><span>32 |                 match iter.next().await {
+</span></span><span style="display:flex;"><span>33 |                     Some(item) =&gt; return Some(item),
+</span></span><span style="display:flex;"><span>   |                                          ---------- returning this value requires that `self.iters` is borrowed for `&#39;1`
+</span></span><span style="display:flex;"><span>...
+</span></span><span style="display:flex;"><span>37 |         }
+</span></span><span style="display:flex;"><span>   |         - return type of async block is Option&lt;(&amp;&#39;1 [u8], &amp;[u8])&gt;
+</span></span></code></pre></div><p>这是怎么回事捏？很可惜，这是 Rust 目前 borrow checker NLL 的一个缺陷。即使这段代码在逻辑上是说得通的，但 borrow checker 不认为它成立。</p>
+<p>这该怎么办呢？我们尝试用两种方法绕过一下。</p>
+<h3 id="方案一换个-borrow-checker">方案一：换个 Borrow Checker</h3>
+<p><a href="https://rust-lang.github.io/polonius/">Polonius</a> 是一个全新的 borrow checker。直接使用 flag 启用它：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span>RUSTFLAGS=<span style="color:#a31515">&#34;-Z polonius&#34;</span> cargo build
+</span></span></code></pre></div><p>编译通过！Polonius 使用和现在 Rust borrow checker NLL 不同的算法，可以处理更多实际上不会发生 race condition，但目前无法编译的 case。可以说，NLL 可能会报一些 false positive，而 Polonius 可以编译的 Rust 程序是 NLL 的超集。</p>
+<h3 id="方案二在结构体内暂存-key-value">方案二：在结构体内暂存 key value</h3>
+<p>我们在 <code>ConcatIterator</code> 里面缓存一下下层迭代器返回的 kv pair，这样也可以通过编译。可惜的是，这样 <code>.next()</code> 的就多了一个拷贝，有点不太“零开销”了。</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">struct</span> <span style="color:#2b91af">ConcatIterator</span>&lt;Iter: <span style="color:#2b91af">KvIterator</span>&gt; {
+</span></span><span style="display:flex;"><span>    iters: Vec&lt;Iter&gt;,
+</span></span><span style="display:flex;"><span>    key: Vec&lt;<span style="color:#2b91af">u8</span>&gt;,
+</span></span><span style="display:flex;"><span>    value: Vec&lt;<span style="color:#2b91af">u8</span>&gt;,
+</span></span><span style="display:flex;"><span>    current_idx: <span style="color:#2b91af">usize</span>,
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span>&lt;Iter: <span style="color:#2b91af">KvIterator</span>&gt; ConcatIterator&lt;Iter&gt; {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">pub</span> <span style="color:#00f">fn</span> new(iters: Vec&lt;Iter&gt;) -&gt; <span style="color:#2b91af">Self</span> {
+</span></span><span style="display:flex;"><span>        Self {
+</span></span><span style="display:flex;"><span>            iters,
+</span></span><span style="display:flex;"><span>            current_idx: 0,
+</span></span><span style="display:flex;"><span>            key: Vec::new(),
+</span></span><span style="display:flex;"><span>            value: Vec::new(),
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">impl</span>&lt;Iter: <span style="color:#2b91af">KvIterator</span>&gt; KvIterator <span style="color:#00f">for</span> ConcatIterator&lt;Iter&gt; {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">type</span> <span style="color:#2b91af">NextFuture</span>&lt;&#39;a&gt;
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">where</span>
+</span></span><span style="display:flex;"><span>        Self: &#39;a,
+</span></span><span style="display:flex;"><span>    = <span style="color:#00f">impl</span> Future&lt;Output = Option&lt;(&amp;&#39;a [<span style="color:#2b91af">u8</span>], &amp;&#39;a [<span style="color:#2b91af">u8</span>])&gt;&gt;;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::NextFuture&lt;&#39;_&gt; {
+</span></span><span style="display:flex;"><span>        <span style="color:#00f">async</span> <span style="color:#00f">move</span> {
+</span></span><span style="display:flex;"><span>            <span style="color:#00f">loop</span> {
+</span></span><span style="display:flex;"><span>                <span style="color:#00f">if</span> self.current_idx &gt;= self.iters.len() {
+</span></span><span style="display:flex;"><span>                    <span style="color:#00f">return</span> None;
+</span></span><span style="display:flex;"><span>                }
+</span></span><span style="display:flex;"><span>                <span style="color:#00f">let</span> iter = &amp;<span style="color:#00f">mut</span> self.iters[self.current_idx];
+</span></span><span style="display:flex;"><span>                <span style="color:#00f">match</span> iter.next().<span style="color:#00f">await</span> {
+</span></span><span style="display:flex;"><span>                    Some((key, value)) =&gt; {
+</span></span><span style="display:flex;"><span>                        self.key.clear();
+</span></span><span style="display:flex;"><span>                        self.key.extend_from_slice(key);
+</span></span><span style="display:flex;"><span>                        self.value.clear();
+</span></span><span style="display:flex;"><span>                        self.value.extend_from_slice(value);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>                        <span style="color:#00f">break</span> Some((self.key.as_slice(), self.value.as_slice()));
+</span></span><span style="display:flex;"><span>                    }
+</span></span><span style="display:flex;"><span>                    None =&gt; {
+</span></span><span style="display:flex;"><span>                        self.current_idx += 1;
+</span></span><span style="display:flex;"><span>                    }
+</span></span><span style="display:flex;"><span>                }
+</span></span><span style="display:flex;"><span>            }
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h3 id="方案三重构-kviterator-trait">方案三：重构 <code>KvIterator</code> trait</h3>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">pub</span> <span style="color:#00f">trait</span> KvIterator {
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// The return type of `next`.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">type</span> <span style="color:#2b91af">KvIteratorNextFuture</span>&lt;&#39;a&gt;: <span style="color:#2b91af">Future</span>&lt;Output = ()&gt;
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">where</span>
+</span></span><span style="display:flex;"><span>        Self: &#39;a;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Move the iterator to the position of the next key.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> next(&amp;<span style="color:#00f">mut</span> self) -&gt; <span style="color:#2b91af">Self</span>::KvIteratorNextFuture&lt;&#39;_&gt;;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the current key.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> key(&amp;self) -&gt; <span style="color:#00f">&amp;</span>[<span style="color:#2b91af">u8</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Get the current value.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> value(&amp;self) -&gt; <span style="color:#00f">&amp;</span>[<span style="color:#2b91af">u8</span>];
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a31515">/// Check if the iterator is exhausted.
+</span></span></span><span style="display:flex;"><span><span style="color:#a31515"></span>    <span style="color:#00f">fn</span> is_valid(&amp;self) -&gt; <span style="color:#2b91af">bool</span>;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>我们不使用 Rust-style 的迭代器实现：<code>.next</code> 只移动迭代器位置；<code>key</code>, <code>value</code> 返回内容；<code>is_valid</code> 确认是否到头。这样也可以绕过生命周期的问题。</p>
+<p>为了实现简单，我们使用方案二跑一下单元测试：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-rust" data-lang="rust"><span style="display:flex;"><span><span style="color:#00f">#[tokio::test]</span>
+</span></span><span style="display:flex;"><span><span style="color:#00f">async</span> <span style="color:#00f">fn</span> test_iterator() {
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">let</span> iter1 = TestIterator::new(0, 5);
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">let</span> iter2 = TestIterator::new(5, 10);
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">let</span> <span style="color:#00f">mut</span> concat_iter = ConcatIterator::new(vec![iter1, iter2]);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#00f">while</span> <span style="color:#00f">let</span> Some((key, value)) = concat_iter.next().<span style="color:#00f">await</span> {
+</span></span><span style="display:flex;"><span>        println!(
+</span></span><span style="display:flex;"><span>            <span style="color:#a31515">&#34;</span><span style="color:#a31515">{:?}</span><span style="color:#a31515"> </span><span style="color:#a31515">{:?}</span><span style="color:#a31515">&#34;</span>,
+</span></span><span style="display:flex;"><span>            Bytes::copy_from_slice(key),
+</span></span><span style="display:flex;"><span>            Bytes::copy_from_slice(value)
+</span></span><span style="display:flex;"><span>        );
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>结果正确！</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-plain" data-lang="plain"><span style="display:flex;"><span>running 1 test
+</span></span><span style="display:flex;"><span>b&#34;key_00000&#34; b&#34;value_00000&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00001&#34; b&#34;value_00001&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00002&#34; b&#34;value_00002&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00003&#34; b&#34;value_00003&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00004&#34; b&#34;value_00004&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00005&#34; b&#34;value_00005&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00006&#34; b&#34;value_00006&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00007&#34; b&#34;value_00007&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00008&#34; b&#34;value_00008&#34;
+</span></span><span style="display:flex;"><span>b&#34;key_00009&#34; b&#34;value_00009&#34;
+</span></span><span style="display:flex;"><span>test concat_iterator::tests::test_iterator ... ok
+</span></span></code></pre></div><h2 id="总结">总结</h2>
+<p>使用 generic_associated_types 和 type_alias_impl_trait 这两个 trait，我们就可以轻松手动实现 async trait，避免 <code>async-trait</code> crate 带来的内存分配和动态调度开销。不过这么操作有几个问题：</p>
+<ul>
+<li>需要 nightly Rust</li>
+<li>不能 recursive (可以考虑用 async-recursion crate)</li>
+<li>不能直接做成 dyn type (可以用类型体操的技巧手动实现)</li>
+</ul>
+<p>您可以在这篇文章对应的 <a href="https://github.com/skyzh/skyzh.github.io/issues/13">GitHub Issue</a> 下使用 GitHub 账号评论、交流你的想法。</p>
+
+				
+			</div>
+
+			<div class="tags">
+				
+					
+						<ul class="flat">
+							
+							<li><a href="/tags/rust">Rust</a></li>
+							
+							<li><a href="/tags/gat">GAT</a></li>
+							
+							<li><a href="/tags/async">async</a></li>
+							
+							<li><a href="/tags/%E5%BC%82%E6%AD%A5">异步</a></li>
+							
+							<li><a href="/tags/%E9%9B%B6%E5%BC%80%E9%94%80">零开销</a></li>
+							
+						</ul>
+					
+				
+			</div></div>
+	</div>
+	
+
+<div class="footer wrapper">
+	<nav class="nav">
+		<div>2023  © Alkdis Chen |  <a href="https://github.com/knadh/hugo-ink">Ink</a> theme on <a href="https://gohugo.io">Hugo</a>  
+    
+    <div class="wrap">
+    
+
+        
+    </div>
+
+    
+    
+    
+    
+    </div>
+	</nav>
+</div>
+
+
+
+
+
+
+
+  
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-52525161-8', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+<script>feather.replace()</script>
+</body>
+</html>

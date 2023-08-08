@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge"><title>BusTub 养成记：从课程项目到 SQL 数据库 - Alkdis Chen</title><link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta itemprop="name" content="BusTub 养成记：从课程项目到 SQL 数据库">
+<meta itemprop="description" content="在今年八月份以前，BusTub (CMU 15-445/645 Database Systems 的课程项目) 只涵盖了数据库系统底层的部分：内存管理 (Project 1 Buffer Pool Manager)、存储引擎 (Project 2 Index)、执行器 (Project 3 Query Execution)，以及并发控制 (Project 4 Concurrency Control)。八月份我开始写 BusTub 的 Query Processing Layer，引入了一整套 SQL 层，实现了 BusTub 从课程项目到 SQL 数据库的飞跃。本学期开始，学生将可以直接使用 BusTub 跑 SQL 查询，验证自己实现的算子是否正确。
+BusTub 的 SQL 层和本失败人士之前参与的 RisingLight / RisingWave 项目一脉相承，和 DuckDB 思路类似。Parser 使用 DuckDB 打包的 libpg_query。SQL 语句 parse 后，通过 binder 绑定 identifier 到各个实体，使用 planner 生成查询计划，而后使用 optimizer 优化成最终的查询计划。BusTub 的 整个 SQL 引擎目前支持简单的 join, aggregation 查询，uncorrelated subquery, 以及 CTE。值得一提的是，BusTub 现在还可以编译成 WASM，直接在浏览器里跑。我们将会把 BusTub 参考答案的编译产物通过网页的形式发放给学生，这样学生在做项目之前就可以大概了解 BusTub 的最终形态是什么样的。"><meta itemprop="datePublished" content="2022-10-05T22:00:00-04:00" />
+<meta itemprop="dateModified" content="2022-10-05T22:00:00-04:00" />
+<meta itemprop="wordCount" content="802">
+<meta itemprop="keywords" content="" /><meta property="og:title" content="BusTub 养成记：从课程项目到 SQL 数据库" />
+<meta property="og:description" content="在今年八月份以前，BusTub (CMU 15-445/645 Database Systems 的课程项目) 只涵盖了数据库系统底层的部分：内存管理 (Project 1 Buffer Pool Manager)、存储引擎 (Project 2 Index)、执行器 (Project 3 Query Execution)，以及并发控制 (Project 4 Concurrency Control)。八月份我开始写 BusTub 的 Query Processing Layer，引入了一整套 SQL 层，实现了 BusTub 从课程项目到 SQL 数据库的飞跃。本学期开始，学生将可以直接使用 BusTub 跑 SQL 查询，验证自己实现的算子是否正确。
+BusTub 的 SQL 层和本失败人士之前参与的 RisingLight / RisingWave 项目一脉相承，和 DuckDB 思路类似。Parser 使用 DuckDB 打包的 libpg_query。SQL 语句 parse 后，通过 binder 绑定 identifier 到各个实体，使用 planner 生成查询计划，而后使用 optimizer 优化成最终的查询计划。BusTub 的 整个 SQL 引擎目前支持简单的 join, aggregation 查询，uncorrelated subquery, 以及 CTE。值得一提的是，BusTub 现在还可以编译成 WASM，直接在浏览器里跑。我们将会把 BusTub 参考答案的编译产物通过网页的形式发放给学生，这样学生在做项目之前就可以大概了解 BusTub 的最终形态是什么样的。" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="https://www.alkdischen.cn/posts/articles/2022-10-05-bustub-query-processing/" /><meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2022-10-05T22:00:00-04:00" />
+<meta property="article:modified_time" content="2022-10-05T22:00:00-04:00" />
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="BusTub 养成记：从课程项目到 SQL 数据库"/>
+<meta name="twitter:description" content="在今年八月份以前，BusTub (CMU 15-445/645 Database Systems 的课程项目) 只涵盖了数据库系统底层的部分：内存管理 (Project 1 Buffer Pool Manager)、存储引擎 (Project 2 Index)、执行器 (Project 3 Query Execution)，以及并发控制 (Project 4 Concurrency Control)。八月份我开始写 BusTub 的 Query Processing Layer，引入了一整套 SQL 层，实现了 BusTub 从课程项目到 SQL 数据库的飞跃。本学期开始，学生将可以直接使用 BusTub 跑 SQL 查询，验证自己实现的算子是否正确。
+BusTub 的 SQL 层和本失败人士之前参与的 RisingLight / RisingWave 项目一脉相承，和 DuckDB 思路类似。Parser 使用 DuckDB 打包的 libpg_query。SQL 语句 parse 后，通过 binder 绑定 identifier 到各个实体，使用 planner 生成查询计划，而后使用 optimizer 优化成最终的查询计划。BusTub 的 整个 SQL 引擎目前支持简单的 join, aggregation 查询，uncorrelated subquery, 以及 CTE。值得一提的是，BusTub 现在还可以编译成 WASM，直接在浏览器里跑。我们将会把 BusTub 参考答案的编译产物通过网页的形式发放给学生，这样学生在做项目之前就可以大概了解 BusTub 的最终形态是什么样的。"/>
+<link href='https://fonts.googleapis.com/css?family=Playfair+Display:700' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/normalize.css" />
+	<link rel="stylesheet" type="text/css" media="screen" href="https://www.alkdischen.cn/css/main.css" />
+
+        <link id="dark-scheme" rel="stylesheet" type="text/css" href="https://www.alkdischen.cn/css/dark.css" />
+
+	<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+		<script src="https://www.alkdischen.cn/js/main.js"></script>
+	
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.css" integrity="sha384-ZPe7yZ91iWxYumsBEOn7ieg8q/o+qh/hQpSaPow8T6BwALcXSCS6C6fSRPIAnTQs" crossorigin="anonymous">
+
+		
+		<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/katex.min.js" integrity="sha384-ljao5I1l+8KYFXG7LNEA7DyaFvuvSCmedUf6Y6JI7LJqiu8q5dEivP2nDdFH31V4" crossorigin="anonymous"></script>
+
+		
+		<script defer src="https://cdn.jsdelivr.net/npm/katex@0.15.6/dist/contrib/auto-render.min.js" integrity="sha384-+XBljXPPiv+OzfbB3cVmLHf4hdUFHlWNZN5spNQ7rmHTXpd7WvJum6fIACpNNfIR" crossorigin="anonymous"
+			onload="renderMathInElement(document.body, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}], throwOnError : false });"></script>
+	
+</head>
+
+
+
+<body>
+	<div class="container wrapper">
+		<div class="header">
+	
+		<div class="avatar">
+			<a href="https://www.alkdischen.cn/">
+				<img src="https://picgo-1313480473.cos.ap-shanghai.myqcloud.com/Blog/sculpture.jpg" alt="Alkdis Chen" />
+			</a>
+		</div>
+	
+	<h1 class="site-title"><a href="https://www.alkdischen.cn/">Alkdis Chen</a></h1>
+	<div class="site-description"><p>Coding with wind</p><nav class="nav social">
+			<ul class="flat"><li><a href="https://github.com/ikoltech" title="GitHub"><i data-feather="github"></i></a></li></ul>
+		</nav>
+	</div>
+
+	<nav class="nav">
+		<ul class="flat">
+			
+			<li>
+				<a href="/">Home</a>
+			</li>
+			
+			<li>
+				<a href="/posts">推文</a>
+			</li>
+			
+			<li>
+				<a href="/posts-ng">Posts</a>
+			</li>
+			
+			<li>
+				<a href="/pages/about">About</a>
+			</li>
+			
+			<li>
+				<a href="/tags">Tags</a>
+			</li>
+			
+		</ul>
+	</nav>
+</div>
+
+
+		<div class="post">
+			<div class="post-header">
+				
+					
+						<div class="meta">
+							<div class="date">
+								<span class="day">05</span>
+								<span class="rest">Oct 2022</span>
+							</div>
+						</div>
+					
+				
+				<div class="matter">
+					<h1 class="title">BusTub 养成记：从课程项目到 SQL 数据库</h1>
+					
+				</div>
+			</div>
+					
+			<div>
+				
+					<nav id="TableOfContents">
+  <ul>
+    <li><a href="#binder">Binder</a></li>
+    <li><a href="#planner">Planner</a></li>
+    <li><a href="#optimizer">Optimizer</a></li>
+    <li><a href="#执行器">执行器</a></li>
+    <li><a href="#后记">后记</a></li>
+  </ul>
+</nav>
+					<hr>
+				
+			</div>
+			<div class="markdown">
+				<p>在今年八月份以前，<a href="https://github.com/cmu-db/bustub">BusTub (CMU 15-445/645 Database Systems 的课程项目)</a> 只涵盖了数据库系统底层的部分：内存管理 (Project 1 Buffer Pool Manager)、存储引擎 (Project 2 Index)、执行器 (Project 3 Query Execution)，以及并发控制 (Project 4 Concurrency Control)。八月份我开始写 BusTub 的 Query Processing Layer，引入了一整套 SQL 层，实现了 BusTub 从课程项目到 SQL 数据库的飞跃。本学期开始，学生将可以直接使用 BusTub 跑 SQL 查询，验证自己实现的算子是否正确。</p>
+<p><img src="overview.png" alt="BusTub Overview"></p>
+<p>BusTub 的 SQL 层和本失败人士之前参与的 RisingLight / RisingWave 项目一脉相承，和 DuckDB 思路类似。Parser 使用 DuckDB 打包的 libpg_query。SQL 语句 parse 后，通过 binder 绑定 identifier 到各个实体，使用 planner 生成查询计划，而后使用 optimizer 优化成最终的查询计划。BusTub 的 整个 SQL 引擎目前支持简单的 join, aggregation 查询，uncorrelated subquery, 以及 CTE。值得一提的是，BusTub 现在还可以编译成 WASM，直接在浏览器里跑。我们将会把 BusTub 参考答案的编译产物通过网页的形式发放给学生，这样学生在做项目之前就可以大概了解 BusTub 的最终形态是什么样的。</p>
+<p>从课程设计的角度来说，BusTub 的 Query Processing Layer 代码直接放在了 starter code 里，并且附带了一些基本的算子。学生在学期初就可以直接跑一些非常简单的 query (扫描 mock table, 过滤, 做简单的数学运算)；在写完 Buffer Pool Manager 之后就可以建表；写完 Index 后可以建索引；写完 Query Execution 之后，就基本可以跑常见的 SQL query 了。</p>
+<p>虽然 BusTub Query Processing Layer 的代码已经没有太多可以改的地方了，但是我们也给学生保留了一些自由发挥的空间。学生可以实现新的 optimizer 规则，通过简单的变化让 query 可以更快执行，这是 query execution project 的拓展任务；与此同时也可以实现新的表达式，这将会是未来的 project 0 C++ primer。</p>
+<p>本文主要是经验之谈，所以大多数内容都是流水账，比较枯燥，并没有什么干货。这篇文章可以看作一篇踩坑文章。本来 DB 界就没什么人会从头写 binder, planner, optimizer。如果有人真有机会写，也可以到那时回忆一下迟先生曾经踩过的坑，看看这篇文章。</p>
+<p>下面我们将介绍 BusTub SQL 引擎的各个模块。Parser 就是 libpg_query，所以没有太多可以详细讲的地方，我们跳过这个部分。</p>
+<h2 id="binder">Binder</h2>
+<p>通过 libpg_query 产生 Postgres AST 后，Binder 将会把这个 AST 改写成 BusTub 可以理解的一个更高级的 AST。在这个过程中，我们会将所有 identifier 解析成没有歧义的实体。我们以最简单的 <code>select *</code> 为例：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>bustub&gt; explain (binder) select * from __mock_table_1;
+</span></span><span style="display:flex;"><span>=== BINDER ===
+</span></span><span style="display:flex;"><span>BoundSelect {
+</span></span><span style="display:flex;"><span>  table=BoundBaseTableRef { table=__mock_table_1, oid=0 },
+</span></span><span style="display:flex;"><span>  columns=[__mock_table_1.colA, __mock_table_1.colB],
+</span></span><span style="display:flex;"><span>  groupBy=[],
+</span></span><span style="display:flex;"><span>  having=,
+</span></span><span style="display:flex;"><span>  where=,
+</span></span><span style="display:flex;"><span>  limit=,
+</span></span><span style="display:flex;"><span>  offset=,
+</span></span><span style="display:flex;"><span>  order_by=[],
+</span></span><span style="display:flex;"><span>  is_distinct=false,
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>Binder 会在 catalog 里面查 <code>__mock_table_1</code> 的信息，将 <code>__mock_table_1</code> 绑定到具体的实体表上 (<code>table_oid=0</code>)。与此同时，将 <code>select *</code> 中的 <code>*</code> 展开成可以查到的所有列。这就完成了整个 binding 的过程。</p>
+<p>我们再来看一个复杂的例子：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>bustub&gt; explain (binder) select colC from (select * from __mock_table_2, __mock_table_3);
+</span></span><span style="display:flex;"><span>=== BINDER ===
+</span></span><span style="display:flex;"><span>BoundSelect {
+</span></span><span style="display:flex;"><span>  table=BoundSubqueryRef {
+</span></span><span style="display:flex;"><span>    alias=__subquery#0,
+</span></span><span style="display:flex;"><span>    subquery=BoundSelect {
+</span></span><span style="display:flex;"><span>      table=BoundCrossProductRef { left=BoundBaseTableRef { table=__mock_table_2, oid=1 }, right=BoundBaseTableRef { table=__mock_table_3, oid=2 } },
+</span></span><span style="display:flex;"><span>      columns=[__mock_table_2.colC, __mock_table_2.colD, __mock_table_3.colE, __mock_table_3.colF],
+</span></span><span style="display:flex;"><span>      groupBy=[],
+</span></span><span style="display:flex;"><span>      having=,
+</span></span><span style="display:flex;"><span>      where=,
+</span></span><span style="display:flex;"><span>      limit=,
+</span></span><span style="display:flex;"><span>      offset=,
+</span></span><span style="display:flex;"><span>      order_by=[],
+</span></span><span style="display:flex;"><span>      is_distinct=false,
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>    columns=[&#34;__mock_table_2.colC&#34;, &#34;__mock_table_2.colD&#34;, &#34;__mock_table_3.colE&#34;, &#34;__mock_table_3.colF&#34;],
+</span></span><span style="display:flex;"><span>  },
+</span></span><span style="display:flex;"><span>  columns=[__subquery#0.__mock_table_2.colC],
+</span></span><span style="display:flex;"><span>  groupBy=[],
+</span></span><span style="display:flex;"><span>  having=,
+</span></span><span style="display:flex;"><span>  where=,
+</span></span><span style="display:flex;"><span>  limit=,
+</span></span><span style="display:flex;"><span>  offset=,
+</span></span><span style="display:flex;"><span>  order_by=[],
+</span></span><span style="display:flex;"><span>  is_distinct=false,
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><code>from</code> 子句里面的 cross join 被绑定到了 <code>BoundCrossProductRef</code> 上，里面包含两个表。subquery 中的 <code>*</code> 被展开成了完整的列名 <code>__mock_table_2.colC, __mock_table_2.colD, __mock_table_3.colE, __mock_table_3.colF</code>。最外层的 <code>colC</code> 被解析成了 <code>__subquery#0.__mock_table_2.colC</code>。整个过程结束后，产生了一个没有歧义的 BusTub AST。这就是 binder 做的事情。</p>
+<p>刚刚的讨论都是基于 from 里面只有 table 的前提讨论的。表达式的绑定在 from 绑定完进行。因此表达式总可以在对应的 table 里找到列。但是这里有一个稍微复杂的特例，需要在 from 绑定到一半的过程中做一些表达式的解析。</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>explain select * from (
+</span></span><span style="display:flex;"><span>	a inner join b on a.cola = b.cola
+</span></span><span style="display:flex;"><span>	) inner join c on a.cola = c.cola;
+</span></span></code></pre></div><p>在绑定 <code>a inner join b on a.cola = b.cola</code> 的过程中，需要将 <code>a.cola</code> 和 <code>b.colb</code> 对应到具体的实体上。因此我们先将 <code>a inner join b</code> 绑定成一个没有 join 条件的 <code>BoundJoinRef</code>，而后用这个没有条件的 <code>BoundJoinRef</code> 作为 scope 绑定表达式，最后把表达式放回 <code>BoundJoinRef</code> 中。这个过程稍微有点 hack，但整体来看也比较干净。</p>
+<p>另外有一些很多数据库都支持的神奇写法，在 BusTub 里面由于实现不太干净而没有支持。比如这个例子：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>explain select max(x) as max_x from table group by c having max_x &gt; 10
+</span></span></code></pre></div><p><code>max_x</code> 是一个 select 列表里面的 alias。在 binder 里面，我们将 select 看作一个整体来做绑定，在绑定这条语句的时候，identifier 绑定的范围仅仅是 from 子句中的表。因此，绑定 having 子句的过程中没有办法找到 <code>max_x</code> 这个 identifier。因此这条 query 在 BusTub 里面只能这样写：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>explain select max(x) as max_x from table group by c having max(x) &gt; 10
+</span></span></code></pre></div><p>后来我查了一下 SQL 标准，标准也没有说支持在 having 子句里用 alias 🤣。</p>
+<h2 id="planner">Planner</h2>
+<p>Planner 递归遍历 Binder 产生的 BusTub AST，产生一个初步的查询计划。吸收了之前项目里踩过的坑，并且为了方便实现、易于理解，BusTub 有这么几个设计点：</p>
+<ul>
+<li>在 planner 和 binder 中使用两套表达式表示。两者表达式表示的最大区别是在引用列的方式上。Binder 中的表达式如果需要用一列，必须使用完整的列名。比如 <code>__subquery#0.__mock_table_2.colC</code>。Planner 中的表达式只能使用列的位置，比如 <code>#0.1</code>，也就是第 0 个孩子的第 1 列。RisingLight 里面最头大的一点就是把这两种表示混在了一起，导致 planning 时的代码容易出错。BusTub 的设计很好的解决了这个问题。</li>
+<li>不分 logical plan node 和 physical plan node。BusTub 的 SQL 层里面有 planner 和 optimizer。通常在这种设计中，planner 生成 logical plan node，然后通过 optimizer 框架做很多步优化产生 physical plan node。但是 BusTub 只是个教学项目，所以我们只有 physical plan node。Planner 会直接把 join plan 成 NestedLoopJoin，在 optimizer 里面改写成 HashJoin 或者 NestedIndexJoin。</li>
+<li>相较于一年前的 BusTub，引入 filter, projection, values plan node。相对应的，在执行器中移除了各种“顺带做 filter”、“顺带做 projection”的部分。这些都独立成了单独的算子。values plan node 用于 <code>insert into values ...</code> 语句。</li>
+</ul>
+<p>目前 Planner 里面最为复杂的部分就是 aggregation 算子的 planning。首先我们规定 aggregation 算子只做 aggregate，不处理 having 子句、aggregation 后 projection。举个例子：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>select x, max(y) + min(z) from t1 group by x having max(y) &gt; 10;
+</span></span></code></pre></div><p>曾经的 BusTub 可以用一个 aggregation 算子处理这一整条 query。在新的 SQL layer 的设计下，我们选择把它拆开，让一个算子只负责一件事情。现在，这条 query 会在 planner 阶段生成这样的执行计划：</p>
+<div class="highlight"><pre tabindex="0" style="background-color:#fff;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>bustub&gt; explain (p) select x, max(y) + min(z) from t1 group by x having max(y) &gt; 10;
+</span></span><span style="display:flex;"><span>=== PLANNER ===
+</span></span><span style="display:flex;"><span>Projection { exprs=[#0.0, #0.2+#0.3] }
+</span></span><span style="display:flex;"><span>  Filter { predicate=#0.1&gt;10 }
+</span></span><span style="display:flex;"><span>    Agg { types=[max, max, min], aggregates=[#0.1, #0.1, #0.2], group_by=[#0.0] }
+</span></span><span style="display:flex;"><span>      SeqScan { table=t1 }
+</span></span></code></pre></div><p>一个简单的 aggregation 被分成了三个算子：</p>
+<ul>
+<li>Aggregation 算子计算 <code>max(y) (in having), max(y), min(z)</code>。</li>
+<li>Filter 算子处理 having 子句。</li>
+<li>Projection 算子做 <code>max(y) + min(z)</code>。</li>
+</ul>
+<p>这样一来，每个算子的职责就变得相当清晰。但是这个 planning 的过程具体是怎么做的？在 planner 看到 <code>max(y) + min(z)</code> 这个表达式的时候，它第一眼只能看到这是一个 binary operation <code>+</code>。只有深入一层看看左手边是啥、右手边是啥，才能明白这个加法不是一个简单的加法，而是要在 aggregation 之后才能加。</p>
+<p>这就是 plan 表达式的时候比较 tricky 的地方。Planner 中有一个 Context，用于表示当前是否在 plan aggregation 算子。如果是，plan 表达式时碰到聚合函数，就会将它替换成一个具体的列 (比如 <code>#0.x</code>)，然后将聚合函数加入 Context 的待聚合列表中。我们看一个具体的例子。现在假设我们在 plan select：</p>
+<ul>
+<li>第一步，plan having 子句。首先看到是 <code>&gt;</code> binary operation，而后看左手边是一个 max function call。于是我们将 <code>max(y)</code> 加入上下文中，并将这个位置的表达式替换成 <code>#0.1</code> (第 0 列是 group by)。大于号右手边是一个正常的常量。</li>
+<li>第二步，plan select list。x 是 group column，改写成 <code>#0.0</code>。<code>max(y) + min(z)</code> 是一个 binary operation。看看加号左手边 <code>max(y)</code> 是一个聚合函数，加到列表中，并将这个位置的表达式替换成 <code>#0.2</code>。加号右手边 <code>min(z)</code> 加到列表中，替换成 <code>#0.3</code>。</li>
+</ul>
+<p>这个流程完成后，我们就可以根据待聚合的列表和改写后的 select list / having 子句完成整个 aggregation 的 planning 了。</p>
+<h2 id="optimizer">Optimizer</h2>
+<p>刚开始我并不打算给 BusTub 加上 optimizer，希望在 planner 阶段直接做完所有事情。但后来一想，加上 optimizer 可以让一些事情变得简单，也可以让学生有更多可以发挥的空间，因此还是加上了。</p>
+<p>BusTub optimizer 是一个 rule-based 优化器。我们将不同的 rule 按顺序应用到当前的执行计划上，产生最终的执行计划。每一条 rule 由开发者手动实现，我们并不提供一个通用的改写框架。目前大部分 rule 实现的方式都是 bottom-up，自下而上改写整个 query plan。</p>
+<p>在 starter code 中，optimizer 提供以下几个基本功能：</p>
+<ul>
+<li>将 filter condition 合并到 NestedLoopJoin 里。比如 cross join <code>select * from a, b where a.x = b.y</code>，在 planner 阶段会产生一个 predicate 为 true 的 NLJ 和一个 <code>a.x = b.y</code> 的 filter。在优化器中我们会把 filter 合并到 NLJ 里面。</li>
+<li>如果有一个等值条件，且右表等值条件的列建了索引，就直接优化成 NestedIndexJoin。</li>
+<li>如果有一个等值条件，但是没有索引，就优化成 HashJoin。</li>
+</ul>
+<p>我绞尽脑汁想了三个 leaderboard test SQL，涵盖了我能想到的常见的优化 (join reordering, predicate push-down, column pruning)。学生可以发挥想象力在 optimizer 里面改写这三条 SQL，从而达到更高的执行效率。</p>
+<h2 id="执行器">执行器</h2>
+<p>由于加入了 Projection 和 Filter 算子，执行器部分也进行了不少的修改。大部分执行器的 predicate 属性被移除了。比如 TableScan 上面现在就没有 predicate 了。</p>
+<p>与此同时去掉了 DistinctExecutor，改为由 planner 生成 group aggregation。</p>
+<p>由于在 planner 里面，aggregation 的 having 由 filter 处理，聚合后的运算由 projection 处理，因此 aggregation 需要做的操作也变得简单了。</p>
+<p>曾经 BusTub 最奇怪的地方是 schema 里面对每一列都保存了一个表达式。这个已经被去掉了。现在 Schema 就是描述算子输出每一列的类型，不再要求没个算子算完以后顺便做 projection。</p>
+<p>执行器还加入了 Sort, TopN executor，这是项目开发以来第一个做排序的执行器。</p>
+<h2 id="后记">后记</h2>
+<p>正当我做着把这一套 query processing layer 移植回 RisingLight 的美梦时，Runji 麻麻给 <a href="https://github.com/risinglightdb/risinglight/pull/702">RisingLight 发了一个 Cascade optimizer 的 Pull Request</a>。等到下次写 RusTub 的时候就不能用一套代码了 😭😭😭。</p>
+<p>欢迎在 <a href="https://github.com/skyzh/skyzh-site/issues/18">GitHub 对应的 issue 里</a>参与本文的讨论。</p>
+
+				
+			</div>
+
+			<div class="tags">
+				
+					
+				
+			</div></div>
+	</div>
+	
+
+<div class="footer wrapper">
+	<nav class="nav">
+		<div>2023  © Alkdis Chen |  <a href="https://github.com/knadh/hugo-ink">Ink</a> theme on <a href="https://gohugo.io">Hugo</a>  
+    
+    <div class="wrap">
+    
+
+        
+    </div>
+
+    
+    
+    
+    
+    </div>
+	</nav>
+</div>
+
+
+
+
+
+
+
+  
+
+<script type="application/javascript">
+var doNotTrack = false;
+if (!doNotTrack) {
+	window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+	ga('create', 'UA-52525161-8', 'auto');
+	
+	ga('send', 'pageview');
+}
+</script>
+<script async src='https://www.google-analytics.com/analytics.js'></script>
+<script>feather.replace()</script>
+</body>
+</html>

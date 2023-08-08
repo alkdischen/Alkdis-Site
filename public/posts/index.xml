@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/posts/</link>
+    <description>Recent content in Posts on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Sun, 06 Aug 2023 11:45:42 +0000</lastBuildDate><atom:link href="https://www.alkdischen.cn/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>[DataSet] ImageNet-1k处理</title>
+      <link>https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/</link>
+      <pubDate>Sun, 06 Aug 2023 11:45:42 +0000</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/</guid>
+      <description>前言 由于每次在云服务器上处理数据都需要进行数据集下载与处理，因此写一篇post来记录ImageNet的处理过程。
+ImageNet的重要性不遑多言，官方下载网站为：https://image-net.org/download.php，需要提前注册号账号，且下载速度较慢，建议使用云盘下载。
+这里列出百度云下载链接：
+https://pan.baidu.com/s/1Nhd7YB-xBXPYj7y9cNOedQ 提取码：ufxe 数据集类别 目前主流数据集又ImageNet-1k和ImageNet-22k，数字代表类别数目不同。
+ImageNet有不同年份的数据集，一般使用ILSVRC2012版本，为2012年的ILSVR大赛数据集。
+观察下载数据，可以发现分为三大类：
+bbox devkit img 如果只是用于日常训练，只需要考虑img数据集，本文也只会探讨img数据集的处理。
+观察img数据，发现分为四个文件，分别为：
+train train_t3 val test 它们分别是训练集，验证集与测试集。特别的，train_t3为新增的训练任务，具体内容可以去官网查看，一般不用考虑使用。
+因此，我们最终需要使用的文件名称为
+ILSVRC2012_img_train.tar ILSVRC2012_img_val.tar ILSVRC2012_img_test.tar 下载到服务器即可，建议存放到单独的文件夹，本文以文件夹 /ImageNet1k/ILSVRC2012/作为根目录为例。
+数据集处理 tar文件的解压很简单，使用指令
+tar -xvf 文件名 即可解压到当前目录，因此建议分别解压到/ImageNet1k/ILSVRC2012/train，/ImageNet1k/ILSVRC2012/val和/ImageNet1k/ILSVRC2012/test目录即可，将文件mv到相应目录，然后解压即可。
+值得一提的是，val和test文件全都是图片，只需要正常解压就行，但是train不是，内部是1000个压缩包，每个压缩包代表一个类别的图片压缩集合，需要特别处理。
+训练集处理 进入到训练集的目录/ImageNet1k/ILSVRC2012/train，确定好压缩包数目为1000个，随后进行批量解压缩，指令为
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &amp;#34;$file&amp;#34; .tar) mkdir &amp;#34;/ImageNet1k/ILSVRC2012/train$dir&amp;#34; tar -xvf &amp;#34;$file&amp;#34; -C &amp;#34;ImageNet1k/ILSVRC2012/train/$dir&amp;#34; done 随后会将所有的压缩包解压到单独的以自身文件名称命名的文件夹之中。
+如果空间不充足，可以边解压边删除，增加一句rm &amp;quot;$file&amp;quot;即可：
+for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &amp;#34;$file&amp;#34; .tar) mkdir &amp;#34;/ImageNet1k/ILSVRC2012/train$dir&amp;#34; tar -xvf &amp;#34;$file&amp;#34; -C &amp;#34;ImageNet1k/ILSVRC2012/train/$dir&amp;#34; rm &amp;#34;$file&amp;#34; done 至此ImageNet1k数据集的处理结束。</description>
+    </item>
+    
+    <item>
+      <title>2023 08 03 MIM</title>
+      <link>https://www.alkdischen.cn/posts/articles/2023-08-03-paper-mim/</link>
+      <pubDate>Fri, 04 Aug 2023 15:16:22 +0000</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2023-08-03-paper-mim/</guid>
+      <description>前言 写好博客，记录一下读过的好论文。
+Background 论文名称: Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture arxiv: 2301.08243 Keywords: CV, Self-Supervised Learning **Author: **Yann Lecun Abstract 一句话总结：在 skyzh/uring-positioned-io 中，我包装了 Tokio 提供的底层 io_uring 接口，在 Rust 中实现了基于 io_uring 的异步随机读文件。你可以这么用它：
+ctx.read(fid, offset, &amp;amp;mut buf).await?; 本文介绍了 io_uring 的基本使用方法，然后介绍了本人写的异步读文件库的实现方法，最后做了一个 benchmark，和 mmap 对比性能。
+点击这里可以访问 GitHub 项目。
+io_uring 简介 io_uring 是一个由 Linux 内核的提供的异步 I/O 接口。它于 2019 年 5 月在 Linux 5.1 中面世，现在已经在各种项目中被使用。 比如：
+RocksDB 的 MultiRead 目前就是通过 io_uring 做并发读文件。 Tokio 为 io_uring 包装了一层 API。在 Tokio 1.</description>
+    </item>
+    
+    <item>
+      <title>BusTub 养成记：从课程项目到 SQL 数据库</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-10-05-bustub-query-processing/</link>
+      <pubDate>Wed, 05 Oct 2022 22:00:00 -0400</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-10-05-bustub-query-processing/</guid>
+      <description>在今年八月份以前，BusTub (CMU 15-445/645 Database Systems 的课程项目) 只涵盖了数据库系统底层的部分：内存管理 (Project 1 Buffer Pool Manager)、存储引擎 (Project 2 Index)、执行器 (Project 3 Query Execution)，以及并发控制 (Project 4 Concurrency Control)。八月份我开始写 BusTub 的 Query Processing Layer，引入了一整套 SQL 层，实现了 BusTub 从课程项目到 SQL 数据库的飞跃。本学期开始，学生将可以直接使用 BusTub 跑 SQL 查询，验证自己实现的算子是否正确。
+BusTub 的 SQL 层和本失败人士之前参与的 RisingLight / RisingWave 项目一脉相承，和 DuckDB 思路类似。Parser 使用 DuckDB 打包的 libpg_query。SQL 语句 parse 后，通过 binder 绑定 identifier 到各个实体，使用 planner 生成查询计划，而后使用 optimizer 优化成最终的查询计划。BusTub 的 整个 SQL 引擎目前支持简单的 join, aggregation 查询，uncorrelated subquery, 以及 CTE。值得一提的是，BusTub 现在还可以编译成 WASM，直接在浏览器里跑。我们将会把 BusTub 参考答案的编译产物通过网页的形式发放给学生，这样学生在做项目之前就可以大概了解 BusTub 的最终形态是什么样的。</description>
+    </item>
+    
+    <item>
+      <title>RustTalk 第四期：与迟先生聊 Rust 与数据库系统</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</link>
+      <pubDate>Sat, 18 Jun 2022 10:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</guid>
+      <description>感谢西瓜哥哥的邀请！在今年六月份，我参加了 RustTalk 第四期的录制，闲聊数据库系统。
+链接：https://rusttalk.github.io/podcast/004/</description>
+    </item>
+    
+    <item>
+      <title>流处理引擎中基于共享状态索引的 Delta Join</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-05-29-shared-state-in-risingwave/</link>
+      <pubDate>Sun, 29 May 2022 23:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-05-29-shared-state-in-risingwave/</guid>
+      <description>在数据库系统中，我们可以通过创建索引的方式来加速 Join 计算的性能。比如 Postgres 就支持 Index Scans，通过扫描索引来加快 Join 的速度。然而，“索引”在流处理系统中很难实现。原因有二：
+流处理系统的中间状态通常来说都是“一写一读”的。流处理系统处理的是无边界的数据，需要通过状态存储来持久化计算的中间状态，在系统故障时从检查点恢复。而这些中间状态，通常只有单个并行度的单个算子读写，不会被共享。 索引并不是在图上流动的流数据，而是一个被算子查询的东西。通常来讲，流数据在计算图上流动，算子永远可以从网络上拿到上游算子推送过来的数据；流处理系统仅根据流上的数据和自己的中间状态进行运算。而索引则是一个需要主动查询（而非在图上流动）的东西，算子需要主动获取索引，才能得到最终的结果。 Differential Dataflow (DD) 实现了一种数据流系统上的索引 Arrangement。Arrangement 可以理解成是一个 MVCC 的索引，记录了 (索引键, 时间) -&amp;gt; 值 的映射。对流数据建立的 Arrangement 就是一种索引，下游算子可以高效地通过索引键来查询某个时间点对应的所有 value。然而，DD 是一个纯内存的系统，没有考虑索引如何持久化；与此同时，如果索引和下游算子不在一个节点上，DD 就需要通过网络上的 RPC 来从上游节点查询索引中的数据，容易影响计算延迟。
+有了索引以后，我们就可以在流系统中支持一种无中间状态的 Delta Join。只要所有需要 Join 的表都根据等值条件建立了索引，Delta Join 就可以完全利用索引产生最终的 Join 结果，无需任何中间状态。（相对的，正常的 Join 则需要分别持久化左右两张表的数据；如果是多路 Join，还需要持久化每一次二路 Join 的结果）
+在 RisingWave 中，我们通过状态存储提供的 MVCC 能力支持了基于共享状态的 Delta Join。本文将先介绍 RisingWave 在云原生存储上的数据持久化流程；而后，介绍共享状态的实现；最后，介绍 RisingWave 中 Delta Join 的实现。
+RisingWave 中的 Checkpoint 流处理系统持久化中间状态的过程被称为 checkpoint。在 RisingWave 中，checkpoint 是一个完全异步的过程。checkpoint 不影响流计算，算子可以持续不断地处理流上的数据，而无需关心 checkpoint 的进度。Checkpoint in RisingWave 详细介绍了这一流程。在这里，我们简单地梳理一下 checkpoint 流程中可能与共享状态相关的部分。</description>
+    </item>
+    
+    <item>
+      <title>用 Rust 做类型体操 (下篇)</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-02-01-rust-type-exercise-in-database-executors-final/</link>
+      <pubDate>Tue, 01 Feb 2022 14:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-02-01-rust-type-exercise-in-database-executors-final/</guid>
+      <description>TL;DR: 本人前两周刚写的 type-exercise-in-rust (GitHub) 中已经包含了一整套数据库执行器的类型设计，本文将详细介绍整个设计过程中的思考过程和解决方案。
+Day 7: 用宏关联逻辑类型和实际类型 在数据库系统中，逻辑类型和实际存储的类型往往不会是一一对应的关系。举例，CHAR 和 VARCHAR 是两种不同的逻辑类型，但大多数数据库系统对于这两种类型都会用同一种内存表示。在前几天的类型体操中，我们实现的类型都是实际类型 (Physical Type)。在今天，我们将会把逻辑类型和实际类型关联起来，并批量生成表达式。
+目标 之前我们实现了 cmp_ge 这个函数，可以将两个输入 cast 成一个指定类型后进行比较。如何生成所有支持类型的 cmp_ge 函数呢？正常来说，我们可能需要：
+pub fn build_binary_expression( f: ExpressionFunc, i1: DataType, i2: DataType, ) -&amp;gt; Box&amp;lt;dyn Expression&amp;gt; { use ExpressionFunc::*; use crate::expr::cmp::*; use crate::expr::string::*; match f { CmpLe =&amp;gt; match (i1, i2) { (DataType::BigInt, DataType::Integer) =&amp;gt; Box::new( BinaryExpression::&amp;lt;i64, i32, bool, _&amp;gt;::new(cmp_le::&amp;lt;i64, i32, i64&amp;gt;), ), (DataType::Integer, DataType::BigInt) =&amp;gt; Box::new( BinaryExpression::&amp;lt;i32, i64, bool, _&amp;gt;::new(cmp_le::&amp;lt;i32, i64, i64&amp;gt;), ), _ =&amp;gt; unimplemented!</description>
+    </item>
+    
+    <item>
+      <title>在 Rust 中用 GAT 手动实现零开销 async trait</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-01-31-gat-async-trait/</link>
+      <pubDate>Mon, 31 Jan 2022 23:00:00 +1700</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-01-31-gat-async-trait/</guid>
+      <description>在这篇文章中，我们将以实现类似 RocksDB 的一系列 iterator 为例，讲解如何在 Rust 中用 GAT 实现零开销 async trait。本文中的代码需要 nightly Rust 才能编译。
+我们将会实现两个 iterator：
+TestIterator：产生一个有序的 KV 序列。 ConcatIterator：将多个 iterator 的序列拼接起来。 举例：TestIterator::new(0, 5) 会产生下面的序列：
+key_00000 -&amp;gt; value_00000 key_00001 -&amp;gt; value_00001 key_00002 -&amp;gt; value_00002 key_00003 -&amp;gt; value_00003 key_00004 -&amp;gt; value_00004 ConcatIterator::new(vec![TestIterator::new(0, 5), TestIterator::new(5, 7)]) 会产生：
+key_00000 -&amp;gt; value_00000 key_00001 -&amp;gt; value_00001 key_00002 -&amp;gt; value_00002 key_00003 -&amp;gt; value_00003 key_00004 -&amp;gt; value_00004 key_00005 -&amp;gt; value_00005 key_00006 -&amp;gt; value_00006 定义 async trait KvIterator 是将会给所有 iterator 实现的一个 trait。用户可以调用 .</description>
+    </item>
+    
+    <item>
+      <title>流处理系统中状态的表示和存储</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-01-15-store-of-streaming-states/</link>
+      <pubDate>Sat, 15 Jan 2022 22:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-01-15-store-of-streaming-states/</guid>
+      <description>流处理系统处理的数据往往是没有边界的：数据会一直从数据源输入，用户需要看到 SQL 查询的实时结果。与此同时，流处理系统中的计算节点可能出错、失败，可能根据用户的需求实时扩容、缩容。在这一过程中，系统需要能够高效地将计算的中间状态在节点之间转移，并持久化到外部系统上，从而保证计算的不间断进行。
+本文介绍了工业界学术界中流处理系统状态存储的三种方案：存储完整状态 (Flink 等系统)，存储共享状态 (以 Materialize / Differential Dataflow 为例)，存储部分状态 (以 Noria (OSDI &amp;lsquo;18) 为例)。这些存储方案各有优势，可以为未来的流处理引擎开发提供一些借鉴意义。
+引入 假设某个购物系统中有两个表：
+visit(product, user, length) 表示用户查看某产品多少秒。 info(product, category) 表示某个产品属于某个分类。 现在我们要查询：某个分类下用户查看产品最长的时间是多少。
+CREATE VIEW result AS SELECT category, MAX(length) as max_length FROM info INNER JOIN visit ON product GROUP BY category 这个查询中包含两表 Join 和一个聚合操作。后文的讨论都将基于这个查询进行。
+假设系统现在的状态是：
+info(product, category) Apple, Fruit Banana, Fruit Carrot, Vegetable Potato, Vegetable visit(product, user, length) Apple, Alice, 10 Apple, Bob, 20 Carrot, Bob, 50 Banana, Alice, 40 Potato, Eve, 60 此时，查询的结果应该是</description>
+    </item>
+    
+    <item>
+      <title>LSM 存储引擎中 KV 分离的实现</title>
+      <link>https://www.alkdischen.cn/posts/articles/2021-08-07-lsm-kv-separation-overview/</link>
+      <pubDate>Sat, 07 Aug 2021 12:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2021-08-07-lsm-kv-separation-overview/</guid>
+      <description>常见的 LSM 存储引擎，如 LevelDB 和 RocksDB，将用户写入的一组的 key 和 value 存放在一起，按顺序写入 SST。在 compaction 过程中，引擎将上层的 SST 与下层 SST 合并，产生新的 SST 文件。这一过程中，SST 里面的 key 和 value 都会被重写一遍，带来较大的写放大。如果 value 的大小远大于 key，compaction 过程带来的写放大会引入巨大的开销。
+在 WiscKey (FAST &amp;lsquo;16) 中，作者提出了一种对 SSD 友好的基于 LSM 树的存储引擎设计。它通过 KV 分离降低了 LSM 树的写放大。 KV 分离就是将大 value 存放在其他地方，并在 LSM 树中存放一个 value pointer (vptr) 指向 value 所在的位置。在 WiscKey 中，这个存放 value 的地方被称为 Value Log (vLog)。由此，LSM 树 compaction 时就不需要重写 value，仅需重新组织 key 的索引。这样一来，就能大大减少写放大，减缓 SSD 的磨损。
+KV 分离的思路听起来非常简单，但在实际实现时，还需要考虑许多问题：</description>
+    </item>
+    
+    <item>
+      <title>io_uring 的接口与实现</title>
+      <link>https://www.alkdischen.cn/posts/articles/2021-06-14-deep-dive-io-uring/</link>
+      <pubDate>Mon, 14 Jun 2021 22:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2021-06-14-deep-dive-io-uring/</guid>
+      <description>io_uring 是 Linux 提供的一个异步 I/O 接口。io_uring 在 2019 年加入 Linux 内核，经过了两年的发展，现在已经变得非常强大。本文基于 Linux 5.12.10 介绍 io_uring 接口。
+io_uring 的实现主要在 fs/io_uring.c 中。
+io_uring 的 用户态 API io_uring 的实现仅仅使用了三个 syscall：io_uring_setup, io_uring_enter 和 io_uring_register。它们分别用于设置 io_uring 上下文，提交并获取完成任务，以及注册内核用户共享的缓冲区。使用前两个 syscall 已经足够使用 io_uring 接口了。
+用户和内核通过提交队列和完成队列进行任务的提交和收割。后文中会出现大量的简写，在这里先做一些介绍。
+缩略语 英语 中文 解析 SQ Submission Queue 提交队列 一整块连续的内存空间存储的环形队列。
+用于存放将执行操作的数据。 CQ Completion Queue 完成队列 一整块连续的内存空间存储的环形队列。
+用于存放完成操作返回的结果。 SQE Submission Queue Entry 提交队列项 提交队列中的一项。 CQE Completion Queue Entry 完成队列项 完成队列中的一项。 Ring Ring 环 比如 SQ Ring，就是“提交队列信息”的意思。</description>
+    </item>
+    
+    <item>
+      <title>在 Rust 中实现基于 io_uring 的异步随机读文件</title>
+      <link>https://www.alkdischen.cn/posts/articles/2021-01-30-async-random-read-with-rust/</link>
+      <pubDate>Sat, 30 Jan 2021 17:37:23 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2021-01-30-async-random-read-with-rust/</guid>
+      <description>一句话总结：在 skyzh/uring-positioned-io 中，我包装了 Tokio 提供的底层 io_uring 接口，在 Rust 中实现了基于 io_uring 的异步随机读文件。你可以这么用它：
+ctx.read(fid, offset, &amp;amp;mut buf).await?; 本文介绍了 io_uring 的基本使用方法，然后介绍了本人写的异步读文件库的实现方法，最后做了一个 benchmark，和 mmap 对比性能。
+点击这里可以访问 GitHub 项目。
+io_uring 简介 io_uring 是一个由 Linux 内核的提供的异步 I/O 接口。它于 2019 年 5 月在 Linux 5.1 中面世，现在已经在各种项目中被使用。 比如：
+RocksDB 的 MultiRead 目前就是通过 io_uring 做并发读文件。 Tokio 为 io_uring 包装了一层 API。在 Tokio 1.0 发布之际，开发者表示今后会通过 io_uring 提供真正的异步文件操作 (见 Announcing Tokio 1.0)。 目前 Tokio 的异步文件操作通过开另外的 I/O 线程调用同步 API 实现。 QEMU 5.0 已经使用 io_uring (见 ChangeLog)。 目前关于 io_uring 的测试，大多是和 Linux AIO 对比 Direct I/O 的性能 (1) (2) (3)。 io_uring 通常能达到两倍于 AIO 的性能。</description>
+    </item>
+    
+  </channel>
+</rss>

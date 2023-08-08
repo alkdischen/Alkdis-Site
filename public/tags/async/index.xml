@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>async on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/tags/async/</link>
+    <description>Recent content in async on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Mon, 31 Jan 2022 23:00:00 +1700</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/async/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在 Rust 中用 GAT 手动实现零开销 async trait</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-01-31-gat-async-trait/</link>
+      <pubDate>Mon, 31 Jan 2022 23:00:00 +1700</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-01-31-gat-async-trait/</guid>
+      <description>在这篇文章中，我们将以实现类似 RocksDB 的一系列 iterator 为例，讲解如何在 Rust 中用 GAT 实现零开销 async trait。本文中的代码需要 nightly Rust 才能编译。
+我们将会实现两个 iterator：
+TestIterator：产生一个有序的 KV 序列。 ConcatIterator：将多个 iterator 的序列拼接起来。 举例：TestIterator::new(0, 5) 会产生下面的序列：
+key_00000 -&amp;gt; value_00000 key_00001 -&amp;gt; value_00001 key_00002 -&amp;gt; value_00002 key_00003 -&amp;gt; value_00003 key_00004 -&amp;gt; value_00004 ConcatIterator::new(vec![TestIterator::new(0, 5), TestIterator::new(5, 7)]) 会产生：
+key_00000 -&amp;gt; value_00000 key_00001 -&amp;gt; value_00001 key_00002 -&amp;gt; value_00002 key_00003 -&amp;gt; value_00003 key_00004 -&amp;gt; value_00004 key_00005 -&amp;gt; value_00005 key_00006 -&amp;gt; value_00006 定义 async trait KvIterator 是将会给所有 iterator 实现的一个 trait。用户可以调用 .</description>
+    </item>
+    
+  </channel>
+</rss>

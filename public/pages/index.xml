@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Pages on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/pages/</link>
+    <description>Recent content in Pages on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Mon, 25 Jul 2022 00:00:00 +0000</lastBuildDate><atom:link href="https://www.alkdischen.cn/pages/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>ChiBot</title>
+      <link>https://www.alkdischen.cn/pages/chibot/</link>
+      <pubDate>Mon, 07 Jun 2021 00:00:00 +0000</pubDate>
+      
+      <guid>https://www.alkdischen.cn/pages/chibot/</guid>
+      <description>ChiBot is an initiative by my friends to develop a chat-bot which acts like me. ChiBots are neither developed by me nor maintained by me. After all, they are fun to play with.
+ChiBot API https://blog.zhuangty.com/api/chi_corpus returns a JSON for that. ChiBot on Telegram Type @realskyzh_bot and a space in chatbox to interact with ChiBot. </description>
+    </item>
+    
+  </channel>
+</rss>

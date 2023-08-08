@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>共享状态 on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/tags/%E5%85%B1%E4%BA%AB%E7%8A%B6%E6%80%81/</link>
+    <description>Recent content in 共享状态 on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Sun, 29 May 2022 23:00:00 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/%E5%85%B1%E4%BA%AB%E7%8A%B6%E6%80%81/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>流处理引擎中基于共享状态索引的 Delta Join</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-05-29-shared-state-in-risingwave/</link>
+      <pubDate>Sun, 29 May 2022 23:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-05-29-shared-state-in-risingwave/</guid>
+      <description>在数据库系统中，我们可以通过创建索引的方式来加速 Join 计算的性能。比如 Postgres 就支持 Index Scans，通过扫描索引来加快 Join 的速度。然而，“索引”在流处理系统中很难实现。原因有二：
+流处理系统的中间状态通常来说都是“一写一读”的。流处理系统处理的是无边界的数据，需要通过状态存储来持久化计算的中间状态，在系统故障时从检查点恢复。而这些中间状态，通常只有单个并行度的单个算子读写，不会被共享。 索引并不是在图上流动的流数据，而是一个被算子查询的东西。通常来讲，流数据在计算图上流动，算子永远可以从网络上拿到上游算子推送过来的数据；流处理系统仅根据流上的数据和自己的中间状态进行运算。而索引则是一个需要主动查询（而非在图上流动）的东西，算子需要主动获取索引，才能得到最终的结果。 Differential Dataflow (DD) 实现了一种数据流系统上的索引 Arrangement。Arrangement 可以理解成是一个 MVCC 的索引，记录了 (索引键, 时间) -&amp;gt; 值 的映射。对流数据建立的 Arrangement 就是一种索引，下游算子可以高效地通过索引键来查询某个时间点对应的所有 value。然而，DD 是一个纯内存的系统，没有考虑索引如何持久化；与此同时，如果索引和下游算子不在一个节点上，DD 就需要通过网络上的 RPC 来从上游节点查询索引中的数据，容易影响计算延迟。
+有了索引以后，我们就可以在流系统中支持一种无中间状态的 Delta Join。只要所有需要 Join 的表都根据等值条件建立了索引，Delta Join 就可以完全利用索引产生最终的 Join 结果，无需任何中间状态。（相对的，正常的 Join 则需要分别持久化左右两张表的数据；如果是多路 Join，还需要持久化每一次二路 Join 的结果）
+在 RisingWave 中，我们通过状态存储提供的 MVCC 能力支持了基于共享状态的 Delta Join。本文将先介绍 RisingWave 在云原生存储上的数据持久化流程；而后，介绍共享状态的实现；最后，介绍 RisingWave 中 Delta Join 的实现。
+RisingWave 中的 Checkpoint 流处理系统持久化中间状态的过程被称为 checkpoint。在 RisingWave 中，checkpoint 是一个完全异步的过程。checkpoint 不影响流计算，算子可以持续不断地处理流上的数据，而无需关心 checkpoint 的进度。Checkpoint in RisingWave 详细介绍了这一流程。在这里，我们简单地梳理一下 checkpoint 流程中可能与共享状态相关的部分。</description>
+    </item>
+    
+  </channel>
+</rss>

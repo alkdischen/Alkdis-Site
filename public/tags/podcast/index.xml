@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Podcast on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/tags/podcast/</link>
+    <description>Recent content in Podcast on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Sat, 18 Jun 2022 10:00:00 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/podcast/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>RustTalk 第四期：与迟先生聊 Rust 与数据库系统</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</link>
+      <pubDate>Sat, 18 Jun 2022 10:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</guid>
+      <description>感谢西瓜哥哥的邀请！在今年六月份，我参加了 RustTalk 第四期的录制，闲聊数据库系统。
+链接：https://rusttalk.github.io/podcast/004/</description>
+    </item>
+    
+  </channel>
+</rss>

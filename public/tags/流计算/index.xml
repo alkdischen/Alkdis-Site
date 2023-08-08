@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>流计算 on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/tags/%E6%B5%81%E8%AE%A1%E7%AE%97/</link>
+    <description>Recent content in 流计算 on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Sat, 15 Jan 2022 22:00:00 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/%E6%B5%81%E8%AE%A1%E7%AE%97/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>流处理系统中状态的表示和存储</title>
+      <link>https://www.alkdischen.cn/posts/articles/2022-01-15-store-of-streaming-states/</link>
+      <pubDate>Sat, 15 Jan 2022 22:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/2022-01-15-store-of-streaming-states/</guid>
+      <description>流处理系统处理的数据往往是没有边界的：数据会一直从数据源输入，用户需要看到 SQL 查询的实时结果。与此同时，流处理系统中的计算节点可能出错、失败，可能根据用户的需求实时扩容、缩容。在这一过程中，系统需要能够高效地将计算的中间状态在节点之间转移，并持久化到外部系统上，从而保证计算的不间断进行。
+本文介绍了工业界学术界中流处理系统状态存储的三种方案：存储完整状态 (Flink 等系统)，存储共享状态 (以 Materialize / Differential Dataflow 为例)，存储部分状态 (以 Noria (OSDI &amp;lsquo;18) 为例)。这些存储方案各有优势，可以为未来的流处理引擎开发提供一些借鉴意义。
+引入 假设某个购物系统中有两个表：
+visit(product, user, length) 表示用户查看某产品多少秒。 info(product, category) 表示某个产品属于某个分类。 现在我们要查询：某个分类下用户查看产品最长的时间是多少。
+CREATE VIEW result AS SELECT category, MAX(length) as max_length FROM info INNER JOIN visit ON product GROUP BY category 这个查询中包含两表 Join 和一个聚合操作。后文的讨论都将基于这个查询进行。
+假设系统现在的状态是：
+info(product, category) Apple, Fruit Banana, Fruit Carrot, Vegetable Potato, Vegetable visit(product, user, length) Apple, Alice, 10 Apple, Bob, 20 Carrot, Bob, 50 Banana, Alice, 40 Potato, Eve, 60 此时，查询的结果应该是</description>
+    </item>
+    
+  </channel>
+</rss>

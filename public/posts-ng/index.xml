@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Blog on Alkdis Chen</title>
+    <link>https://www.alkdischen.cn/posts-ng/</link>
+    <description>Recent content in Blog on Alkdis Chen</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>© Alkdis Chen</copyright>
+    <lastBuildDate>Tue, 12 Jul 2022 20:00:00 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/posts-ng/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Developer Experience Counts: Behind the Scenes of RiseDev</title>
+      <link>https://www.alkdischen.cn/posts-ng/articles/2022-07-12-risedev/</link>
+      <pubDate>Tue, 12 Jul 2022 20:00:00 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts-ng/articles/2022-07-12-risedev/</guid>
+      <description>I&amp;rsquo;ve published a blog on our company&amp;rsquo;s website. In this blog, I talked about how we improved the development experience for the RisingWave project. Please take a look :)
+https://singularity-data.com/blog/developer-experience-counts-behind-the-scenes-of-RiseDev/</description>
+    </item>
+    
+  </channel>
+</rss>
