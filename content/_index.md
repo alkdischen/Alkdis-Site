@@ -13,9 +13,11 @@ As the same, you could see posts in English in [Blog in English](/posts-ng) or [
 
 You could watch [About me](/pages/about) to know more about me, especially about my education experience and technology.
 
+This is my [CV](./pages/about/cv_AlkdisChen.pdf), but this file is not guaranteed to be updated in real time. There may be a delay of a few weeks.
+
 I'm also available at:
 
-* [GitHub](https://github.com/AlkdisChen)
+* [GitHub](https://github.com/ikoltech)
 * Email: alkdischen@gmail.com
 
 Three is a [blog](www.alkdischen.club) built up by myself as well, which is mainly about my life and other things.
