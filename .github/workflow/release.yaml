@@ -1,0 +1,50 @@
+name: Release # 工作流标题
+ 
+ 
+# 检测到在 main 分支执行 push 动作之后触发
+on:
+  push:
+    branches:
+      - main  # 设置要部署的分支
+ 
+ 
+# 工作流程中的一个任务
+jobs:
+  deploy: # 任务名称
+ 
+ 
+# 执行当前任务需要的的环境
+runs-on: ubuntu-latest
+ 
+# 需要执行的步骤，多个
+steps:
+ 
+ 
+ # 第一步，检出代码
+ - uses: actions/checkout@v3
+        with:
+          submodules: true  # Fetch Hugo themes (true OR recursive)
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+ 
+ 
+# 配置 hugo 环境
+- name: Setup Hugo
+        uses: peaceiris/actions-hugo@v2
+        with:
+          hugo-version: 'latest' # hugo 版本，latest: 表示最新版
+ 
+ 
+ # 打包 hugo 
+ - name: Build
+        run: hugo --minify # 最小化打包
+ 
+ 
+# 部署
+- name: Deploy
+        uses: wlixcc/SFTP-Deploy-Action@v1.0
+        with:
+          username: 'root'   # ssh user name
+          server: '${{ secrets.SERVER_IP }}' # 引用之前创建好的secret
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }} # 引用之前创建好的secret
+          local_path: './public'  # 对应我们项目build的文件夹路径（config.yml）
+          remote_path: '/www/wwwroot/hugo' # 要部署到的位置
