@@ -39,7 +39,8 @@ pub fn speak(animal: AnimalEnum) {
 pub fn generate_code() -> Result<()> {
   std::fs::write("animal.rs", format!("
   pub fn speak(animal: AnimalEnum) {{
-    {generated_code} }}
+    {generated_code} 
+    }}
   ", generated_code = generate_code_for_animal()))
 }
 ```

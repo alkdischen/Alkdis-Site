@@ -31,12 +31,12 @@ steps:
 - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
-          hugo-version: 'latest' # hugo 版本，latest: 表示最新版
+          hugo-version: '0.117.0' # hugo 版本，latest: 表示最新版
  
  
  # 打包 hugo 
  - name: Build
-        run: hugo --minify # 最小化打包
+        run: hugo # 最小化打包
  
  
 # 部署
