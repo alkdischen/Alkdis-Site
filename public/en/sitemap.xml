@@ -2,6 +2,25 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://www.alkdischen.cn/</loc>
+    <lastmod>2023-08-09T04:58:06+08:00</lastmod>
+    <xhtml:link
+                rel="alternate"
+                hreflang="zh-cn"
+                href="https://www.alkdischen.cn/zh/"
+                />
+    <xhtml:link
+                rel="alternate"
+                hreflang="en-us"
+                href="https://www.alkdischen.cn/"
+                />
+  </url><url>
+    <loc>https://www.alkdischen.cn/posts/articles/hugo-github-automation-release/</loc>
+    <lastmod>2023-08-09T04:58:06+08:00</lastmod>
+  </url><url>
+    <loc>https://www.alkdischen.cn/posts/</loc>
+    <lastmod>2023-08-09T04:58:06+08:00</lastmod>
+  </url><url>
     <loc>https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/</loc>
     <lastmod>2023-08-06T11:45:42+00:00</lastmod>
   </url><url>
@@ -22,22 +41,6 @@
     <lastmod>2023-08-06T11:45:42+00:00</lastmod>
   </url><url>
     <loc>https://www.alkdischen.cn/tags/dataset/</loc>
-    <lastmod>2023-08-06T11:45:42+00:00</lastmod>
-  </url><url>
-    <loc>https://www.alkdischen.cn/</loc>
-    <lastmod>2023-08-06T11:45:42+00:00</lastmod>
-    <xhtml:link
-                rel="alternate"
-                hreflang="zh-cn"
-                href="https://www.alkdischen.cn/zh/"
-                />
-    <xhtml:link
-                rel="alternate"
-                hreflang="en-us"
-                href="https://www.alkdischen.cn/"
-                />
-  </url><url>
-    <loc>https://www.alkdischen.cn/posts/</loc>
     <lastmod>2023-08-06T11:45:42+00:00</lastmod>
   </url><url>
     <loc>https://www.alkdischen.cn/tags/</loc>
@@ -89,19 +92,10 @@
     <loc>https://www.alkdischen.cn/tags/rust/</loc>
     <lastmod>2022-07-12T20:00:00+08:00</lastmod>
   </url><url>
-    <loc>https://www.alkdischen.cn/tags/podcast/</loc>
-    <lastmod>2022-06-18T10:00:00+08:00</lastmod>
-  </url><url>
-    <loc>https://www.alkdischen.cn/tags/rusttalk/</loc>
-    <lastmod>2022-06-18T10:00:00+08:00</lastmod>
-  </url><url>
-    <loc>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</loc>
-    <lastmod>2022-06-18T10:00:00+08:00</lastmod>
+    <loc>https://www.alkdischen.cn/tags/%E5%85%B1%E4%BA%AB%E7%8A%B6%E6%80%81/</loc>
+    <lastmod>2022-05-29T23:00:00+08:00</lastmod>
   </url><url>
     <loc>https://www.alkdischen.cn/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/</loc>
-    <lastmod>2022-06-18T10:00:00+08:00</lastmod>
-  </url><url>
-    <loc>https://www.alkdischen.cn/tags/%E5%85%B1%E4%BA%AB%E7%8A%B6%E6%80%81/</loc>
     <lastmod>2022-05-29T23:00:00+08:00</lastmod>
   </url><url>
     <loc>https://www.alkdischen.cn/tags/%E6%B5%81%E5%A4%84%E7%90%86/</loc>

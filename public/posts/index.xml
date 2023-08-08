@@ -7,7 +7,16 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>© Alkdis Chen</copyright>
-    <lastBuildDate>Sun, 06 Aug 2023 11:45:42 +0000</lastBuildDate><atom:link href="https://www.alkdischen.cn/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 09 Aug 2023 04:58:06 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Hugo Github Automation Release</title>
+      <link>https://www.alkdischen.cn/posts/articles/hugo-github-automation-release/</link>
+      <pubDate>Wed, 09 Aug 2023 04:58:06 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/hugo-github-automation-release/</guid>
+      <description>前言 花了一晚上研究了一下如何把博客自动部署到服务器，作为记录。</description>
+    </item>
+    
     <item>
       <title>[DataSet] ImageNet-1k处理</title>
       <link>https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/</link>
@@ -56,16 +65,6 @@ RocksDB 的 MultiRead 目前就是通过 io_uring 做并发读文件。 Tokio �
       <guid>https://www.alkdischen.cn/posts/articles/2022-10-05-bustub-query-processing/</guid>
       <description>在今年八月份以前，BusTub (CMU 15-445/645 Database Systems 的课程项目) 只涵盖了数据库系统底层的部分：内存管理 (Project 1 Buffer Pool Manager)、存储引擎 (Project 2 Index)、执行器 (Project 3 Query Execution)，以及并发控制 (Project 4 Concurrency Control)。八月份我开始写 BusTub 的 Query Processing Layer，引入了一整套 SQL 层，实现了 BusTub 从课程项目到 SQL 数据库的飞跃。本学期开始，学生将可以直接使用 BusTub 跑 SQL 查询，验证自己实现的算子是否正确。
 BusTub 的 SQL 层和本失败人士之前参与的 RisingLight / RisingWave 项目一脉相承，和 DuckDB 思路类似。Parser 使用 DuckDB 打包的 libpg_query。SQL 语句 parse 后，通过 binder 绑定 identifier 到各个实体，使用 planner 生成查询计划，而后使用 optimizer 优化成最终的查询计划。BusTub 的 整个 SQL 引擎目前支持简单的 join, aggregation 查询，uncorrelated subquery, 以及 CTE。值得一提的是，BusTub 现在还可以编译成 WASM，直接在浏览器里跑。我们将会把 BusTub 参考答案的编译产物通过网页的形式发放给学生，这样学生在做项目之前就可以大概了解 BusTub 的最终形态是什么样的。</description>
-    </item>
-    
-    <item>
-      <title>RustTalk 第四期：与迟先生聊 Rust 与数据库系统</title>
-      <link>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</link>
-      <pubDate>Sat, 18 Jun 2022 10:00:00 +0800</pubDate>
-      
-      <guid>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</guid>
-      <description>感谢西瓜哥哥的邀请！在今年六月份，我参加了 RustTalk 第四期的录制，闲聊数据库系统。
-链接：https://rusttalk.github.io/podcast/004/</description>
     </item>
     
     <item>

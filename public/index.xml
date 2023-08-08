@@ -7,7 +7,16 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>© Alkdis Chen</copyright>
-    <lastBuildDate>Sun, 06 Aug 2023 11:45:42 +0000</lastBuildDate><atom:link href="https://www.alkdischen.cn/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 09 Aug 2023 04:58:06 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Hugo Github Automation Release</title>
+      <link>https://www.alkdischen.cn/posts/articles/hugo-github-automation-release/</link>
+      <pubDate>Wed, 09 Aug 2023 04:58:06 +0800</pubDate>
+      
+      <guid>https://www.alkdischen.cn/posts/articles/hugo-github-automation-release/</guid>
+      <description>前言 花了一晚上研究了一下如何把博客自动部署到服务器，作为记录。</description>
+    </item>
+    
     <item>
       <title>[DataSet] ImageNet-1k处理</title>
       <link>https://www.alkdischen.cn/posts/articles/2023-08-06-dataset-imagenet1k/</link>
@@ -66,16 +75,6 @@ BusTub 的 SQL 层和本失败人士之前参与的 RisingLight / RisingWave 项
       <guid>https://www.alkdischen.cn/posts-ng/articles/2022-07-12-risedev/</guid>
       <description>I&amp;rsquo;ve published a blog on our company&amp;rsquo;s website. In this blog, I talked about how we improved the development experience for the RisingWave project. Please take a look :)
 https://singularity-data.com/blog/developer-experience-counts-behind-the-scenes-of-RiseDev/</description>
-    </item>
-    
-    <item>
-      <title>RustTalk 第四期：与迟先生聊 Rust 与数据库系统</title>
-      <link>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</link>
-      <pubDate>Sat, 18 Jun 2022 10:00:00 +0800</pubDate>
-      
-      <guid>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</guid>
-      <description>感谢西瓜哥哥的邀请！在今年六月份，我参加了 RustTalk 第四期的录制，闲聊数据库系统。
-链接：https://rusttalk.github.io/podcast/004/</description>
     </item>
     
     <item>

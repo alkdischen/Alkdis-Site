@@ -7,17 +7,7 @@
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
     <copyright>© Alkdis Chen</copyright>
-    <lastBuildDate>Sat, 18 Jun 2022 10:00:00 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/index.xml" rel="self" type="application/rss+xml" />
-    <item>
-      <title>RustTalk 第四期：与迟先生聊 Rust 与数据库系统</title>
-      <link>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</link>
-      <pubDate>Sat, 18 Jun 2022 10:00:00 +0800</pubDate>
-      
-      <guid>https://www.alkdischen.cn/posts/articles/2022-06-18-rusttalk-rust-database/</guid>
-      <description>感谢西瓜哥哥的邀请！在今年六月份，我参加了 RustTalk 第四期的录制，闲聊数据库系统。
-链接：https://rusttalk.github.io/podcast/004/</description>
-    </item>
-    
+    <lastBuildDate>Sun, 29 May 2022 23:00:00 +0800</lastBuildDate><atom:link href="https://www.alkdischen.cn/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>流处理引擎中基于共享状态索引的 Delta Join</title>
       <link>https://www.alkdischen.cn/posts/articles/2022-05-29-shared-state-in-risingwave/</link>
