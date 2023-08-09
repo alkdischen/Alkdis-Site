@@ -59,7 +59,7 @@ for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &amp;#34;$file&
       
       <guid>https://www.alkdischen.cn/posts/articles/2023-08-03-paper-mim/</guid>
       <description>前言 写好博客，记录一下读过的好论文。
-Background 论文名称: Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture arxiv: 2301.08243 Keywords: CV, Self-Supervised Learning **Author: **Yann Lecun Abstract </description>
+Background 论文名称: Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture arxiv: 2301.08243 Keywords: CV, Self-Supervised Learning Author: Yann Lecun Abstract </description>
     </item>
     
     <item>

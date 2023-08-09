@@ -15,6 +15,6 @@ tags = ["自监督"]
 - **论文名称:** Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture  
 - **arxiv:** 2301.08243
 - **Keywords:** CV, Self-Supervised Learning
-- **Author: **Yann Lecun
+- **Author:** Yann Lecun
 
 ## Abstract
