@@ -1,5 +1,5 @@
 ---
-title: "Hugo Github Automation Release"
+title: "[Tech]基于Github的Hugo博客自动同步"
 date: 2023-08-09T04:58:06+08:00
 toc: true
 ---
