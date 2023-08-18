@@ -28,7 +28,7 @@ for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34;
 如果空间不充足，可以边解压边删除，增加一句rm &quot;$file&quot;即可：
 for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34; .tar) mkdir &#34;/ImageNet1k/ILSVRC2012/train$dir&#34; tar -xvf &#34;$file&#34; -C &#34;ImageNet1k/ILSVRC2012/train/$dir&#34; rm &#34;$file&#34; done 至此ImageNet1k数据集的处理结束。"><meta itemprop="datePublished" content="2023-08-06T11:45:42+00:00" />
 <meta itemprop="dateModified" content="2023-08-06T11:45:42+00:00" />
-<meta itemprop="wordCount" content="108">
+<meta itemprop="wordCount" content="111">
 <meta itemprop="keywords" content="DataSet," /><meta property="og:title" content="[DataSet] ImageNet-1k处理" />
 <meta property="og:description" content="前言 由于每次在云服务器上处理数据都需要进行数据集下载与处理，因此写一篇post来记录ImageNet的处理过程。
 ImageNet的重要性不遑多言，官方下载网站为：https://image-net.org/download.php，需要提前注册号账号，且下载速度较慢，建议使用云盘下载。
@@ -156,6 +156,7 @@ for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34;
     <li><a href="#数据集处理">数据集处理</a></li>
     <li><a href="#训练集处理">训练集处理</a></li>
     <li><a href="#检验">检验</a></li>
+    <li><a href="#其他">其他</a></li>
   </ul>
 </nav>
 					<hr>
@@ -227,6 +228,9 @@ for file in /ImageNet1k/ILSVRC2012/train*.tar; do dir=$(basename &#34;$file&#34;
 <p><code>/ImageNet1k/ILSVRC2012/val</code>有5000张图片。</p>
 <p><code>/ImageNet1k/ILSVRC2012/train</code>有10000张图片。</p>
 <p>以供检查校验。</p>
+<h2 id="其他">其他</h2>
+<p>发现了val的转换脚本，如果直接解压val，得到了5000张图片，在val文件夹使用脚本可以把图片分到1000个文件夹中，实现和train同等结构的转换。</p>
+<p>脚本下载链接：<a href="./val2tr.sh">val2tr.sh</a></p>
 
 				
 			</div>

@@ -120,3 +120,9 @@ ls -l | grep -i '\.JPEG$\|\.jpg$\|\.jpeg$\|\.png$\|\.gif$\|\.bmp$' | wc -l
 `/ImageNet1k/ILSVRC2012/train`有10000张图片。
 
 以供检查校验。
+
+## 其他
+
+发现了val的转换脚本，如果直接解压val，得到了5000张图片，在val文件夹使用脚本可以把图片分到1000个文件夹中，实现和train同等结构的转换。
+
+脚本下载链接：[val2tr.sh](./val2tr.sh)
